@@ -78,8 +78,6 @@ function App() {
       return
     }
 
-<<<<<<< Updated upstream
-=======
     const resolved = resolveConnectionDirection(activePort, port)
     if (!resolved) {
       setMessage('Invalid direction. Use output/bidirectional to input/bidirectional.')
@@ -88,13 +86,10 @@ function App() {
     }
     const { source, target } = resolved
 
->>>>>>> Stashed changes
     const validation = validateConnection({
       source: activePort,
       target: port,
       connections,
-<<<<<<< Updated upstream
-=======
       resolvePort: (ref) => {
         const node = nodes.find((entry) => entry.id === ref.nodeId)
         if (!node) {
@@ -113,7 +108,6 @@ function App() {
               : [...device.inputs, ...device.outputs]
         return portList.find((entry) => entry.id === ref.portId) ?? null
       },
->>>>>>> Stashed changes
     })
 
     if (!validation.valid) {
@@ -142,8 +136,6 @@ function App() {
     )
   }
 
-<<<<<<< Updated upstream
-=======
   const handleDeleteNode = (nodeId: string) => {
     setNodes((current) => current.filter((node) => node.id !== nodeId))
     setConnections((current) =>
@@ -188,7 +180,6 @@ function App() {
     setMessage('Connection removed.')
   }
 
->>>>>>> Stashed changes
   const handleCreateCategory = (label: string): boolean => {
     const trimmed = label.trim()
     if (!trimmed) {
@@ -529,13 +520,10 @@ function App() {
           activePort={activePort}
           onPortClick={handlePortClick}
           onNodeMove={handleNodeMove}
-<<<<<<< Updated upstream
-=======
           onDeleteNode={handleDeleteNode}
           onRenameNode={handleRenameNode}
           onToggleNodeCollapse={handleToggleNodeCollapse}
           onDeleteConnection={handleDeleteConnection}
->>>>>>> Stashed changes
         />
       </section>
     </div>

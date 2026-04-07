@@ -231,8 +231,6 @@
   cursor: grab;
 }
 
-<<<<<<< Updated upstream
-=======
 .delete-node-button {
   border-radius: 5px;
   border: 1px solid #6a4a3e;
@@ -298,7 +296,6 @@
   color: #b8c8df;
 }
 
->>>>>>> Stashed changes
 .ports-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;

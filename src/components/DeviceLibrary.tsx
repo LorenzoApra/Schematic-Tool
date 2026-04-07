@@ -181,45 +181,6 @@ export function DeviceLibrary({
           </button>
         </form>
 
-<<<<<<< Updated upstream
-        <div className="manager-list">
-          <strong>Manage Categories</strong>
-          {categories.length === 0 ? (
-            <small>No categories yet.</small>
-          ) : (
-            categories.map((category) => (
-              <div key={category.id} className="manager-row">
-                <span>{category.label}</span>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextLabel = window.prompt(
-                        'Rename category',
-                        category.label,
-                      )
-                      if (nextLabel === null) return
-                      onUpdateCategory(category.id, nextLabel)
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!window.confirm(`Delete category "${category.label}"?`)) {
-                        return
-                      }
-                      onDeleteCategory(category.id)
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-=======
               <form
                 className="manager-form"
                 onSubmit={(event) => {
@@ -663,7 +624,6 @@ export function DeviceLibrary({
               </div>
             </div>
           </section>
->>>>>>> Stashed changes
         </div>
 
         <div className="manager-list">

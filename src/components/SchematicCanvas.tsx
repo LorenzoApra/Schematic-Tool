@@ -14,13 +14,10 @@ interface SchematicCanvasProps {
   activePort: PortRef | null
   onPortClick: (port: PortRef) => void
   onNodeMove: (nodeId: string, x: number, y: number) => void
-<<<<<<< Updated upstream
-=======
   onDeleteNode: (nodeId: string) => void
   onRenameNode: (nodeId: string, name: string) => void
   onToggleNodeCollapse: (nodeId: string) => void
   onDeleteConnection: (connectionId: string) => void
->>>>>>> Stashed changes
 }
 
 export function SchematicCanvas({
@@ -30,13 +27,10 @@ export function SchematicCanvas({
   activePort,
   onPortClick,
   onNodeMove,
-<<<<<<< Updated upstream
-=======
   onDeleteNode,
   onRenameNode,
   onToggleNodeCollapse,
   onDeleteConnection,
->>>>>>> Stashed changes
 }: SchematicCanvasProps) {
   const [dragState, setDragState] = useState<{
     nodeId: string
@@ -45,8 +39,6 @@ export function SchematicCanvas({
   } | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
 
-<<<<<<< Updated upstream
-=======
   const getPortPosition = (port: PortRef) => {
     const node = nodes.find((entry) => entry.id === port.nodeId)
     if (!node) {
@@ -139,7 +131,6 @@ export function SchematicCanvas({
     ).entries(),
   )
 
->>>>>>> Stashed changes
   useEffect(() => {
     if (!dragState) {
       return
@@ -175,11 +166,7 @@ export function SchematicCanvas({
         {activePort ? (
           <span className="active-connection">Selected: {activePort.portId}</span>
         ) : (
-<<<<<<< Updated upstream
-          <span>Select an output then an input to connect</span>
-=======
           <span>Select ports to connect (supports bidirectional)</span>
->>>>>>> Stashed changes
         )}
       </div>
 
@@ -196,11 +183,6 @@ export function SchematicCanvas({
               id={node.id}
               x={node.x}
               y={node.y}
-<<<<<<< Updated upstream
-              device={device}
-              activePort={activePort}
-              onPortClick={onPortClick}
-=======
               displayName={node.customName?.trim() || device.name}
               collapsed={Boolean(node.collapsed)}
               device={device}
@@ -209,7 +191,6 @@ export function SchematicCanvas({
               onDeleteNode={onDeleteNode}
               onRenameNode={onRenameNode}
               onToggleCollapse={onToggleNodeCollapse}
->>>>>>> Stashed changes
               onDragStart={(nodeId, clientX, clientY) => {
                 const rect = canvasRef.current?.getBoundingClientRect()
                 if (!rect) {

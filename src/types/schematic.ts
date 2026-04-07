@@ -1,6 +1,3 @@
-<<<<<<< Updated upstream
-export type PortKind = 'input' | 'output'
-=======
 export type PortKind = 'input' | 'output' | 'bidirectional'
 export type ConnectorCategory =
   | 'video'
@@ -8,7 +5,6 @@ export type ConnectorCategory =
   | 'network'
   | 'lighting'
   | 'power'
->>>>>>> Stashed changes
 
 export interface PortDefinition {
   id: string
@@ -34,11 +30,8 @@ export interface NodeInstance {
   deviceId: string
   x: number
   y: number
-<<<<<<< Updated upstream
-=======
   customName?: string
   collapsed?: boolean
->>>>>>> Stashed changes
 }
 
 export interface PortRef {

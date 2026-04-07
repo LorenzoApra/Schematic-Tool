@@ -4,21 +4,15 @@ interface DeviceNodeProps {
   id: string
   x: number
   y: number
-<<<<<<< Updated upstream
-=======
   displayName: string
   collapsed: boolean
->>>>>>> Stashed changes
   device: DeviceDefinition
   activePort: PortRef | null
   onPortClick: (port: PortRef) => void
   onDragStart: (nodeId: string, clientX: number, clientY: number) => void
-<<<<<<< Updated upstream
-=======
   onDeleteNode: (nodeId: string) => void
   onRenameNode: (nodeId: string, name: string) => void
   onToggleCollapse: (nodeId: string) => void
->>>>>>> Stashed changes
 }
 
 function PortButton({
@@ -59,21 +53,15 @@ export function DeviceNode({
   id,
   x,
   y,
-<<<<<<< Updated upstream
-=======
   displayName,
   collapsed,
->>>>>>> Stashed changes
   device,
   activePort,
   onPortClick,
   onDragStart,
-<<<<<<< Updated upstream
-=======
   onDeleteNode,
   onRenameNode,
   onToggleCollapse,
->>>>>>> Stashed changes
 }: DeviceNodeProps) {
   return (
     <article
@@ -91,10 +79,6 @@ export function DeviceNode({
         onDragStart(id, event.clientX, event.clientY)
       }}
     >
-<<<<<<< Updated upstream
-      <header>{device.name}</header>
-      <div className="ports-row">
-=======
       <header>
         {isEditingName ? (
           <div className="node-name-editor">
@@ -149,7 +133,6 @@ export function DeviceNode({
         </div>
       ) : (
         <div className="ports-row">
->>>>>>> Stashed changes
         <div className="ports-col">
           <strong>Inputs</strong>
           {device.inputs.length === 0 ? (
