@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { DeviceDefinition, PortDefinition, PortRef } from '../types/schematic'
 
 interface DeviceNodeProps {
@@ -35,6 +36,9 @@ function PortButton({
     <button
       type="button"
       className={`port-button ${port.kind} ${isActive ? 'active' : ''}`}
+      data-node-id={nodeId}
+      data-port-id={port.id}
+      data-port-kind={port.kind}
       onClick={() =>
         onPortClick({
           nodeId,
@@ -44,7 +48,7 @@ function PortButton({
       }
       title={`${port.label} (${port.kind})`}
     >
-      {port.label}
+      {port.label} [{port.connectorType}]
     </button>
   )
 }
@@ -63,6 +67,21 @@ export function DeviceNode({
   onRenameNode,
   onToggleCollapse,
 }: DeviceNodeProps) {
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [nextName, setNextName] = useState(displayName)
+
+  const inputPorts = device.inputs.filter((port) => port.kind === 'input')
+  const outputPorts = device.outputs.filter((port) => port.kind === 'output')
+  const biPorts = [...device.inputs, ...device.outputs].filter(
+    (port) => port.kind === 'bidirectional',
+  )
+
+  const visibleColumns = [
+    { key: 'input', title: 'Inputs', ports: inputPorts },
+    { key: 'output', title: 'Outputs', ports: outputPorts },
+    { key: 'bidirectional', title: 'Bidirectional', ports: biPorts },
+  ].filter((column) => column.ports.length > 0)
+
   return (
     <article
       className="device-node"
@@ -127,58 +146,21 @@ export function DeviceNode({
       </header>
       {collapsed ? (
         <div className="collapsed-node-meta">
-          In {device.inputs.length} / Out {device.outputs.length} / Bi{' '}
-          {device.inputs.filter((p) => p.kind === 'bidirectional').length +
-            device.outputs.filter((p) => p.kind === 'bidirectional').length}
+          In {device.inputs.filter((p) => p.kind === 'input').length} / Out{' '}
+          {device.outputs.filter((p) => p.kind === 'output').length} / Bi{' '}
+          {biPorts.length}
         </div>
       ) : (
         <div className="ports-row">
-        <div className="ports-col">
-          <strong>Inputs</strong>
-          {device.inputs.length === 0 ? (
-            <small>None</small>
+          {visibleColumns.length === 0 ? (
+            <div className="ports-col">
+              <small>No ports configured</small>
+            </div>
           ) : (
-            device.inputs
-              .filter((port) => port.kind === 'input')
-              .map((port) => (
-              <PortButton
-                key={port.id}
-                nodeId={id}
-                port={port}
-                activePort={activePort}
-                onPortClick={onPortClick}
-              />
-              ))
-          )}
-        </div>
-        <div className="ports-col">
-          <strong>Outputs</strong>
-          {device.outputs.length === 0 ? (
-            <small>None</small>
-          ) : (
-            device.outputs
-              .filter((port) => port.kind === 'output')
-              .map((port) => (
-              <PortButton
-                key={port.id}
-                nodeId={id}
-                port={port}
-                activePort={activePort}
-                onPortClick={onPortClick}
-              />
-              ))
-          )}
-        </div>
-        <div className="ports-col">
-          <strong>Bidirectional</strong>
-          {[...device.inputs, ...device.outputs].filter(
-            (port) => port.kind === 'bidirectional',
-          ).length === 0 ? (
-            <small>None</small>
-          ) : (
-            [...device.inputs, ...device.outputs]
-              .filter((port) => port.kind === 'bidirectional')
-              .map((port) => (
+            visibleColumns.map((column) => (
+              <div className="ports-col" key={column.key}>
+                <strong>{column.title}</strong>
+                {column.ports.map((port) => (
                 <PortButton
                   key={port.id}
                   nodeId={id}
@@ -186,10 +168,11 @@ export function DeviceNode({
                   activePort={activePort}
                   onPortClick={onPortClick}
                 />
-              ))
+                ))}
+              </div>
+            ))
           )}
         </div>
-      </div>
       )}
     </article>
   )

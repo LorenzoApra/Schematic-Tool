@@ -48,11 +48,56 @@
 }
 
 .library-manager {
-  margin-top: 1.2rem;
-  border-top: 1px solid #2a3342;
-  padding-top: 0.9rem;
   display: grid;
   gap: 0.8rem;
+}
+
+.open-manager-button {
+  margin-top: 0.8rem;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.manager-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 10, 16, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 60;
+}
+
+.manager-modal {
+  width: min(980px, 95vw);
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #3a4f6f;
+  background: #111826;
+  padding: 0.9rem;
+}
+
+.manager-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.manager-close-button {
+  border-radius: 6px;
+  border: 1px solid #3a4f6f;
+  background: #263750;
+  color: #e8ebf0;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
 }
 
 .library-manager h3 {
@@ -177,6 +222,33 @@
   color: #a8b7cf;
 }
 
+.workspace-actions {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.workspace-actions button {
+  border-radius: 6px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.workspace-actions button.danger {
+  border-color: #6a4a3e;
+  background: #3e2a25;
+  color: #f2d1cf;
+}
+
+.workspace-actions button.neutral {
+  background: #23324a;
+}
+
 .status-message {
   margin: 0;
   padding: 0.65rem 1rem;
@@ -190,6 +262,7 @@
   flex-direction: column;
   min-height: 0;
   flex: 1;
+  position: relative;
 }
 
 .canvas-toolbar {
@@ -215,8 +288,26 @@
   overflow: auto;
 }
 
+.connection-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.connection-line {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.95;
+  pointer-events: auto;
+  cursor: context-menu;
+  filter: drop-shadow(0 0 4px rgba(143, 198, 255, 0.5));
+}
+
 .device-node {
   position: absolute;
+  z-index: 2;
   width: 310px;
   border: 1px solid #3a4f6f;
   border-radius: 10px;
@@ -298,7 +389,7 @@
 
 .ports-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
   gap: 0.7rem;
   padding: 0.7rem;
 }
@@ -345,35 +436,69 @@
   outline-offset: 1px;
 }
 
-.connections-list {
+.connection-panel {
   position: absolute;
   right: 12px;
   bottom: 12px;
-  width: 340px;
-  max-height: 220px;
+  width: min(440px, calc(100% - 24px));
+  max-height: min(55%, 340px);
   overflow: auto;
   border: 1px solid #3a4f6f;
   border-radius: 8px;
   background: rgba(20, 26, 35, 0.94);
   padding: 0.7rem;
+  z-index: 3;
 }
 
-.connections-list h3 {
+.connection-panel h3 {
   margin: 0 0 0.4rem;
   font-size: 0.9rem;
 }
 
-.connections-list p {
+.connection-panel p {
   margin: 0;
   color: #9bb0ce;
 }
 
-.connections-list ul {
+.connection-panel hr {
+  border: 0;
+  border-top: 1px solid #2a3c56;
+  margin: 0.55rem 0;
+}
+
+.legend-items,
+.connections-list-items {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
+  gap: 0.3rem;
+}
+
+.legend-items li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex: 0 0 auto;
+}
+
+.connections-list-items {
   gap: 0.25rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.78rem;
+}
+
+.connections-list-items li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
 }

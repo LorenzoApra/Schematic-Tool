@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  connectorTypeColors,
+  fallbackConnectionColor,
+} from '../data/connectorColors'
 import type {
   Connection,
   DeviceDefinition,
@@ -38,52 +42,38 @@ export function SchematicCanvas({
     offsetY: number
   } | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
+  const [contentSize, setContentSize] = useState({ width: 1200, height: 800 })
 
   const getPortPosition = (port: PortRef) => {
-    const node = nodes.find((entry) => entry.id === port.nodeId)
-    if (!node) {
-      return null
+    const stage = canvasRef.current
+    if (!stage) return null
+
+    const selector = `.port-button[data-node-id="${port.nodeId}"][data-port-id="${port.portId}"][data-port-kind="${port.kind}"]`
+    const button = stage.querySelector(selector) as HTMLElement | null
+    if (!button) return null
+
+    const stageRect = stage.getBoundingClientRect()
+    const buttonRect = button.getBoundingClientRect()
+
+    return {
+      x:
+        buttonRect.left -
+        stageRect.left +
+        stage.scrollLeft +
+        buttonRect.width / 2,
+      y:
+        buttonRect.top -
+        stageRect.top +
+        stage.scrollTop +
+        buttonRect.height / 2,
     }
-
-    const device = devicesById[node.deviceId]
-    if (!device) {
-      return null
-    }
-
-    const portList =
-      port.kind === 'input'
-        ? device.inputs.filter((entry) => entry.kind === 'input')
-        : port.kind === 'output'
-          ? device.outputs.filter((entry) => entry.kind === 'output')
-          : [...device.inputs, ...device.outputs].filter(
-              (entry) => entry.kind === 'bidirectional',
-            )
-    const portIndex = portList.findIndex((entry) => entry.id === port.portId)
-    if (portIndex < 0) {
-      return null
-    }
-
-    const headerHeight = 36
-    const rowPaddingTop = 12
-    const titleHeight = 16
-    const portBlockHeight = 27
-    const y = node.y + headerHeight + rowPaddingTop + titleHeight + portIndex * portBlockHeight + 10
-    const x =
-      port.kind === 'output' ? node.x + 304 : port.kind === 'input' ? node.x + 6 : node.x + 155
-
-    return { x, y }
   }
 
   const getPortDefinition = (port: PortRef) => {
     const node = nodes.find((entry) => entry.id === port.nodeId)
-    if (!node) {
-      return null
-    }
-
+    if (!node) return null
     const device = devicesById[node.deviceId]
-    if (!device) {
-      return null
-    }
+    if (!device) return null
 
     const portList =
       port.kind === 'input'
@@ -91,29 +81,20 @@ export function SchematicCanvas({
         : port.kind === 'output'
           ? device.outputs
           : [...device.inputs, ...device.outputs]
+
     return portList.find((entry) => entry.id === port.portId) ?? null
   }
 
   const getNodeLabel = (nodeId: string) => {
     const node = nodes.find((entry) => entry.id === nodeId)
-    if (!node) {
-      return nodeId
-    }
-
+    if (!node) return nodeId
     const device = devicesById[node.deviceId]
-    if (!device) {
-      return node.customName?.trim() || nodeId
-    }
-
-    return node.customName?.trim() || device.name
+    return node.customName?.trim() || device?.name || nodeId
   }
 
   const getConnectionColor = (connection: Connection) => {
     const fromPort = getPortDefinition(connection.from)
-    if (!fromPort) {
-      return fallbackConnectionColor
-    }
-
+    if (!fromPort) return fallbackConnectionColor
     return connectorTypeColors[fromPort.connectorType] ?? fallbackConnectionColor
   }
 
@@ -122,25 +103,58 @@ export function SchematicCanvas({
       connections
         .map((connection) => {
           const fromPort = getPortDefinition(connection.from)
-          if (!fromPort) {
-            return null
-          }
+          if (!fromPort) return null
           return [fromPort.connectorType, getConnectionColor(connection)] as const
         })
         .filter((entry): entry is readonly [string, string] => entry !== null),
     ).entries(),
   )
 
-  useEffect(() => {
-    if (!dragState) {
-      return
+  const estimatedWidth = Math.max(
+    1200,
+    ...nodes.map((node) => node.x + 360),
+  )
+  const estimatedHeight = Math.max(
+    800,
+    ...nodes.map((node) => node.y + 260),
+  )
+
+  const contentWidth = Math.max(estimatedWidth, contentSize.width)
+  const contentHeight = Math.max(estimatedHeight, contentSize.height)
+
+  useLayoutEffect(() => {
+    const stage = canvasRef.current
+    if (!stage) return
+
+    const updateSize = () => {
+      setContentSize({
+        width: Math.max(1200, stage.scrollWidth),
+        height: Math.max(800, stage.scrollHeight),
+      })
     }
+
+    updateSize()
+
+    const observer = new ResizeObserver(updateSize)
+    observer.observe(stage)
+
+    const nodesInStage = stage.querySelectorAll('.device-node')
+    nodesInStage.forEach((nodeEl) => observer.observe(nodeEl))
+
+    window.addEventListener('resize', updateSize)
+
+    return () => {
+      window.removeEventListener('resize', updateSize)
+      observer.disconnect()
+    }
+  }, [nodes])
+
+  useEffect(() => {
+    if (!dragState) return
 
     const onPointerMove = (event: PointerEvent) => {
       const canvasRect = canvasRef.current?.getBoundingClientRect()
-      if (!canvasRect) {
-        return
-      }
+      if (!canvasRect) return
 
       const nextX = event.clientX - canvasRect.left - dragState.offsetX
       const nextY = event.clientY - canvasRect.top - dragState.offsetY
@@ -171,11 +185,40 @@ export function SchematicCanvas({
       </div>
 
       <div ref={canvasRef} className="canvas-stage">
+        <svg
+          className="connection-layer"
+          aria-hidden="true"
+          width={contentWidth}
+          height={contentHeight}
+          viewBox={`0 0 ${contentWidth} ${contentHeight}`}
+        >
+          {connections.map((connection) => {
+            const from = getPortPosition(connection.from)
+            const to = getPortPosition(connection.to)
+            if (!from || !to) return null
+
+            const controlOffset = Math.max(36, Math.abs(to.x - from.x) * 0.35)
+            const path = `M ${from.x} ${from.y} C ${from.x + controlOffset} ${from.y}, ${to.x - controlOffset} ${to.y}, ${to.x} ${to.y}`
+            const color = getConnectionColor(connection)
+
+            return (
+              <path
+                key={connection.id}
+                d={path}
+                className="connection-line"
+                style={{ stroke: color }}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  onDeleteConnection(connection.id)
+                }}
+              />
+            )
+          })}
+        </svg>
+
         {nodes.map((node) => {
           const device = devicesById[node.deviceId]
-          if (!device) {
-            return null
-          }
+          if (!device) return null
 
           return (
             <DeviceNode
@@ -193,9 +236,7 @@ export function SchematicCanvas({
               onToggleCollapse={onToggleNodeCollapse}
               onDragStart={(nodeId, clientX, clientY) => {
                 const rect = canvasRef.current?.getBoundingClientRect()
-                if (!rect) {
-                  return
-                }
+                if (!rect) return
 
                 setDragState({
                   nodeId,
@@ -207,22 +248,46 @@ export function SchematicCanvas({
           )
         })}
 
-        <section className="connections-list">
-          <h3>Connections</h3>
-          {connections.length === 0 ? (
-            <p>No routes yet.</p>
-          ) : (
-            <ul>
-              {connections.map((connection) => (
-                <li key={connection.id}>
-                  {connection.from.nodeId}:{connection.from.portId} {'->'}{' '}
-                  {connection.to.nodeId}:{connection.to.portId}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
+      <section className="connection-panel">
+        <h3>Connections & Legend</h3>
+        {connections.length === 0 ? (
+          <p>No routes yet.</p>
+        ) : (
+          <ul className="connections-list-items">
+            {connections.map((connection) => (
+              <li key={connection.id}>
+                {getNodeLabel(connection.from.nodeId)}:{connection.from.portId} {'->'}{' '}
+                {getNodeLabel(connection.to.nodeId)}:{connection.to.portId}
+                <button
+                  type="button"
+                  className="connection-remove-button"
+                  onClick={() => onDeleteConnection(connection.id)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <hr />
+        {usedConnectorLegend.length === 0 ? (
+          <p>No active connectors.</p>
+        ) : (
+          <ul className="legend-items">
+            {usedConnectorLegend.map(([connectorType, color]) => (
+              <li key={connectorType}>
+                <span
+                  className="legend-swatch"
+                  style={{ backgroundColor: color }}
+                  aria-hidden="true"
+                />
+                {connectorType}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   )
 }

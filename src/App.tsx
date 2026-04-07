@@ -1,11 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEventHandler } from 'react'
 import './App.css'
 import { DeviceLibrary } from './components/DeviceLibrary'
 import { SchematicCanvas } from './components/SchematicCanvas'
+import {
+  defaultConnectorCategory,
+  defaultConnectorType,
+} from './data/connectors'
 import { deviceCategories, devices } from './data/deviceLibrary'
 import { validateConnection } from './lib/validation'
 import type {
   Connection,
+  ConnectorCategory,
   DeviceCategory,
   DeviceDefinition,
   NodeInstance,
@@ -21,6 +26,81 @@ function toSlug(value: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+const STORAGE_KEY = 'live-show-schematic-state-v1'
+
+interface PersistedState {
+  categories: DeviceCategory[]
+  deviceList: DeviceDefinition[]
+  nodes: NodeInstance[]
+  connections: Connection[]
+}
+
+interface ProjectExport {
+  format: 'live-show-schematic-project'
+  version: 1
+  exportedAt: string
+  state: PersistedState
+}
+
+function normalizeDeviceList(deviceList: DeviceDefinition[]): DeviceDefinition[] {
+  return deviceList.map((device) => ({
+    ...device,
+    inputs: device.inputs.map((port) => ({
+      ...port,
+      connectorCategory: port.connectorCategory ?? defaultConnectorCategory,
+      connectorType: port.connectorType ?? defaultConnectorType,
+    })),
+    outputs: device.outputs.map((port) => ({
+      ...port,
+      connectorCategory: port.connectorCategory ?? defaultConnectorCategory,
+      connectorType: port.connectorType ?? defaultConnectorType,
+    })),
+  }))
+}
+
+function loadInitialState(): PersistedState {
+  if (typeof window === 'undefined') {
+    return {
+      categories: deviceCategories,
+      deviceList: normalizeDeviceList(devices),
+      nodes: [],
+      connections: [],
+    }
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) {
+      return {
+        categories: deviceCategories,
+        deviceList: normalizeDeviceList(devices),
+        nodes: [],
+        connections: [],
+      }
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PersistedState>
+    return {
+      categories:
+        Array.isArray(parsed.categories) && parsed.categories.length > 0
+          ? parsed.categories
+          : deviceCategories,
+      deviceList: normalizeDeviceList(
+        Array.isArray(parsed.deviceList) ? parsed.deviceList : devices,
+      ),
+      nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
+      connections: Array.isArray(parsed.connections) ? parsed.connections : [],
+    }
+  } catch {
+    return {
+      categories: deviceCategories,
+      deviceList: normalizeDeviceList(devices),
+      nodes: [],
+      connections: [],
+    }
+  }
+}
+
 function getNodeIdsForDevice(nodes: NodeInstance[], deviceId: string): Set<string> {
   return new Set(
     nodes.filter((node) => node.deviceId === deviceId).map((node) => node.id),
@@ -34,22 +114,30 @@ function resolveConnectionDirection(
   const canStart = (kind: PortKind) => kind === 'output' || kind === 'bidirectional'
   const canEnd = (kind: PortKind) => kind === 'input' || kind === 'bidirectional'
 
-  if (canStart(first.kind) && canEnd(second.kind)) {
-    return { source: first, target: second }
-  }
-  if (canStart(second.kind) && canEnd(first.kind)) {
-    return { source: second, target: first }
-  }
+  if (canStart(first.kind) && canEnd(second.kind)) return { source: first, target: second }
+  if (canStart(second.kind) && canEnd(first.kind)) return { source: second, target: first }
   return null
 }
 
 function App() {
-  const [categories, setCategories] = useState<DeviceCategory[]>(deviceCategories)
-  const [deviceList, setDeviceList] = useState<DeviceDefinition[]>(devices)
-  const [nodes, setNodes] = useState<NodeInstance[]>([])
-  const [connections, setConnections] = useState<Connection[]>([])
+  const [initialState] = useState<PersistedState>(() => loadInitialState())
+  const [categories, setCategories] = useState<DeviceCategory[]>(initialState.categories)
+  const [deviceList, setDeviceList] = useState<DeviceDefinition[]>(
+    initialState.deviceList,
+  )
+  const [nodes, setNodes] = useState<NodeInstance[]>(initialState.nodes)
+  const [connections, setConnections] = useState<Connection[]>(
+    initialState.connections,
+  )
   const [activePort, setActivePort] = useState<PortRef | null>(null)
   const [message, setMessage] = useState<string>('')
+  const [isClearCanvasArmed, setIsClearCanvasArmed] = useState(false)
+  const importInputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    const state: PersistedState = { categories, deviceList, nodes, connections }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  }, [categories, deviceList, nodes, connections])
 
   const devicesById = useMemo(
     () => Object.fromEntries(deviceList.map((device) => [device.id, device])),
@@ -59,16 +147,24 @@ function App() {
   const handleAddDevice = (deviceId: string) => {
     const index = nodes.length
     const id = `${deviceId}-${Date.now()}-${index}`
-
     setNodes((current) => [
       ...current,
-      {
-        id,
-        deviceId,
-        x: 24 + (index % 3) * 320,
-        y: 24 + Math.floor(index / 3) * 180,
-      },
+      { id, deviceId, x: 24 + (index % 3) * 320, y: 24 + Math.floor(index / 3) * 180 },
     ])
+  }
+
+  const resolvePort = (ref: PortRef) => {
+    const node = nodes.find((entry) => entry.id === ref.nodeId)
+    if (!node) return null
+    const device = devicesById[node.deviceId]
+    if (!device) return null
+    const portList =
+      ref.kind === 'input'
+        ? device.inputs
+        : ref.kind === 'output'
+          ? device.outputs
+          : [...device.inputs, ...device.outputs]
+    return portList.find((entry) => entry.id === ref.portId) ?? null
   }
 
   const handlePortClick = (port: PortRef) => {
@@ -84,32 +180,9 @@ function App() {
       setActivePort(null)
       return
     }
+
     const { source, target } = resolved
-
-    const validation = validateConnection({
-      source: activePort,
-      target: port,
-      connections,
-      resolvePort: (ref) => {
-        const node = nodes.find((entry) => entry.id === ref.nodeId)
-        if (!node) {
-          return null
-        }
-        const device = devicesById[node.deviceId]
-        if (!device) {
-          return null
-        }
-
-        const portList =
-          ref.kind === 'input'
-            ? device.inputs
-            : ref.kind === 'output'
-              ? device.outputs
-              : [...device.inputs, ...device.outputs]
-        return portList.find((entry) => entry.id === ref.portId) ?? null
-      },
-    })
-
+    const validation = validateConnection({ source, target, connections, resolvePort })
     if (!validation.valid) {
       setMessage(validation.error ?? 'Invalid connection.')
       setActivePort(null)
@@ -117,15 +190,7 @@ function App() {
     }
 
     const id = `conn-${Date.now()}-${connections.length}`
-    setConnections((current) => [
-      ...current,
-      {
-        id,
-        from: activePort,
-        to: port,
-      },
-    ])
-
+    setConnections((current) => [...current, { id, from: source, to: target }])
     setMessage('Connection added.')
     setActivePort(null)
   }
@@ -144,9 +209,7 @@ function App() {
           connection.from.nodeId !== nodeId && connection.to.nodeId !== nodeId,
       ),
     )
-    if (activePort?.nodeId === nodeId) {
-      setActivePort(null)
-    }
+    if (activePort?.nodeId === nodeId) setActivePort(null)
     setMessage('Device removed from canvas.')
   }
 
@@ -156,7 +219,6 @@ function App() {
       setMessage('Device name on canvas cannot be empty.')
       return
     }
-
     setNodes((current) =>
       current.map((node) =>
         node.id === nodeId ? { ...node, customName: trimmed } : node,
@@ -182,22 +244,15 @@ function App() {
 
   const handleCreateCategory = (label: string): boolean => {
     const trimmed = label.trim()
-    if (!trimmed) {
+    const id = toSlug(trimmed)
+    if (!trimmed || !id) {
       setMessage('Category name is required.')
       return false
     }
-
-    const id = toSlug(trimmed)
-    if (!id) {
-      setMessage('Category name must include letters or numbers.')
-      return false
-    }
-
     if (categories.some((category) => category.id === id)) {
       setMessage('Category already exists.')
       return false
     }
-
     setCategories((current) => [...current, { id, label: trimmed }])
     setMessage(`Category "${trimmed}" created.`)
     return true
@@ -209,34 +264,24 @@ function App() {
       setMessage('Device name is required.')
       return false
     }
-
     if (!categoryId) {
       setMessage('Select a category for the new device.')
       return false
     }
-
     const baseId = toSlug(trimmed)
     if (!baseId) {
       setMessage('Device name must include letters or numbers.')
       return false
     }
-
     let finalId = baseId
     let index = 1
     while (deviceList.some((device) => device.id === finalId)) {
       index += 1
       finalId = `${baseId}-${index}`
     }
-
     setDeviceList((current) => [
       ...current,
-      {
-        id: finalId,
-        name: trimmed,
-        category: categoryId,
-        inputs: [],
-        outputs: [],
-      },
+      { id: finalId, name: trimmed, category: categoryId, inputs: [], outputs: [] },
     ])
     setMessage(`Device "${trimmed}" created.`)
     return true
@@ -246,29 +291,18 @@ function App() {
     deviceId: string,
     kind: PortKind,
     label: string,
+    connectorCategory: ConnectorCategory,
+    connectorType: string,
   ): boolean => {
     const trimmed = label.trim()
-    if (!deviceId) {
-      setMessage('Select a device before adding a port.')
+    if (!deviceId || !trimmed) {
+      setMessage('Select a device and enter a port label.')
       return false
     }
-    if (!trimmed) {
-      setMessage('Port label is required.')
-      return false
-    }
-
     const portId = toSlug(trimmed)
-    if (!portId) {
-      setMessage('Port label must include letters or numbers.')
-      return false
-    }
-
+    if (!portId) return false
     const targetDevice = deviceList.find((device) => device.id === deviceId)
-    if (!targetDevice) {
-      setMessage('Device not found.')
-      return false
-    }
-
+    if (!targetDevice) return false
     const existingPorts = [...targetDevice.inputs, ...targetDevice.outputs]
     if (existingPorts.some((port) => port.id === portId)) {
       setMessage('This device already has a port with the same name.')
@@ -277,14 +311,9 @@ function App() {
 
     setDeviceList((current) =>
       current.map((device) => {
-        if (device.id !== deviceId) {
-          return device
-        }
-
-        const nextPort = { id: portId, label: trimmed, kind }
-        if (kind === 'input') {
-          return { ...device, inputs: [...device.inputs, nextPort] }
-        }
+        if (device.id !== deviceId) return device
+        const nextPort = { id: portId, label: trimmed, kind, connectorCategory, connectorType }
+        if (kind === 'input') return { ...device, inputs: [...device.inputs, nextPort] }
         return { ...device, outputs: [...device.outputs, nextPort] }
       }),
     )
@@ -292,13 +321,97 @@ function App() {
     return true
   }
 
+  const handleBulkAddPorts = (
+    deviceId: string,
+    kind: PortKind,
+    labelPrefix: string,
+    count: number,
+    startIndex: number,
+    connectorCategory: ConnectorCategory,
+    connectorType: string,
+  ): boolean => {
+    const prefix = labelPrefix.trim()
+    if (!deviceId || !prefix || !Number.isFinite(count) || count <= 0) return false
+    const device = deviceList.find((entry) => entry.id === deviceId)
+    if (!device) return false
+
+    const existingIds = new Set([...device.inputs, ...device.outputs].map((p) => p.id))
+    const newPorts = Array.from({ length: count }, (_, i) => {
+      const label = `${prefix} ${startIndex + i}`.trim()
+      const baseId = toSlug(label) || `port-${Date.now()}-${i}`
+      let id = baseId
+      let suffix = 2
+      while (existingIds.has(id)) {
+        id = `${baseId}-${suffix}`
+        suffix += 1
+      }
+      existingIds.add(id)
+      return { id, label, kind, connectorCategory, connectorType }
+    })
+
+    setDeviceList((current) =>
+      current.map((entry) => {
+        if (entry.id !== deviceId) return entry
+        if (kind === 'input') return { ...entry, inputs: [...entry.inputs, ...newPorts] }
+        return { ...entry, outputs: [...entry.outputs, ...newPorts] }
+      }),
+    )
+    setMessage(`Added ${newPorts.length} ${kind} ports.`)
+    return true
+  }
+
+  const handleBulkRemovePorts = (
+    deviceId: string,
+    kind: PortKind,
+    labelPrefix: string,
+    count: number,
+    connectorCategory: ConnectorCategory,
+    connectorType: string,
+  ): boolean => {
+    if (!deviceId || !Number.isFinite(count) || count <= 0) return false
+    const prefix = labelPrefix.trim().toLowerCase()
+    const device = deviceList.find((entry) => entry.id === deviceId)
+    if (!device) return false
+    const sourcePorts = kind === 'input' ? device.inputs : device.outputs
+    const matches = sourcePorts.filter((port) => {
+      const prefixOk = prefix ? port.label.toLowerCase().startsWith(prefix) : true
+      return (
+        prefixOk &&
+        port.connectorCategory === connectorCategory &&
+        port.connectorType === connectorType
+      )
+    })
+    const removedPorts = matches.slice(0, count)
+    if (removedPorts.length === 0) return false
+    const removedIds = new Set(removedPorts.map((port) => port.id))
+
+    setDeviceList((current) =>
+      current.map((entry) => {
+        if (entry.id !== deviceId) return entry
+        if (kind === 'input') {
+          return { ...entry, inputs: entry.inputs.filter((p) => !removedIds.has(p.id)) }
+        }
+        return { ...entry, outputs: entry.outputs.filter((p) => !removedIds.has(p.id)) }
+      }),
+    )
+
+    const affectedNodeIds = getNodeIdsForDevice(nodes, deviceId)
+    setConnections((current) =>
+      current.filter((connection) => {
+        const fromMatch =
+          affectedNodeIds.has(connection.from.nodeId) && removedIds.has(connection.from.portId)
+        const toMatch =
+          affectedNodeIds.has(connection.to.nodeId) && removedIds.has(connection.to.portId)
+        return !(fromMatch || toMatch)
+      }),
+    )
+    setMessage(`Removed ${removedPorts.length} ${kind} ports.`)
+    return true
+  }
+
   const handleUpdateCategory = (categoryId: string, nextLabel: string): boolean => {
     const trimmed = nextLabel.trim()
-    if (!trimmed) {
-      setMessage('Category name is required.')
-      return false
-    }
-
+    if (!trimmed) return false
     setCategories((current) =>
       current.map((category) =>
         category.id === categoryId ? { ...category, label: trimmed } : category,
@@ -310,13 +423,10 @@ function App() {
 
   const handleDeleteCategory = (categoryId: string): boolean => {
     if (deviceList.some((device) => device.category === categoryId)) {
-      setMessage('Cannot delete a category that still has devices.')
+      setMessage('Cannot delete category: move or delete its devices first.')
       return false
     }
-
-    setCategories((current) =>
-      current.filter((category) => category.id !== categoryId),
-    )
+    setCategories((current) => current.filter((category) => category.id !== categoryId))
     setMessage('Category deleted.')
     return true
   }
@@ -326,31 +436,28 @@ function App() {
     nextName: string,
     nextCategoryId: string,
   ): boolean => {
-    const trimmedName = nextName.trim()
-    if (!trimmedName) {
-      setMessage('Device name is required.')
-      return false
-    }
-    if (!categories.some((category) => category.id === nextCategoryId)) {
-      setMessage('Selected category does not exist.')
-      return false
-    }
-
+    const trimmed = nextName.trim()
+    if (!trimmed || !categories.some((c) => c.id === nextCategoryId)) return false
     setDeviceList((current) =>
       current.map((device) =>
         device.id === deviceId
-          ? { ...device, name: trimmedName, category: nextCategoryId }
+          ? { ...device, name: trimmed, category: nextCategoryId }
           : device,
       ),
     )
-    setMessage(`Device updated to "${trimmedName}".`)
     return true
+  }
+
+  const handleMoveDevice = (deviceId: string, nextCategoryId: string): boolean => {
+    return handleUpdateDevice(
+      deviceId,
+      deviceList.find((d) => d.id === deviceId)?.name ?? '',
+      nextCategoryId,
+    )
   }
 
   const handleDeleteDevice = (deviceId: string): boolean => {
     const removedNodeIds = getNodeIdsForDevice(nodes, deviceId)
-    const removedCount = removedNodeIds.size
-
     setDeviceList((current) => current.filter((device) => device.id !== deviceId))
     setNodes((current) => current.filter((node) => node.deviceId !== deviceId))
     setConnections((current) =>
@@ -360,16 +467,7 @@ function App() {
           !removedNodeIds.has(connection.to.nodeId),
       ),
     )
-
-    if (activePort && removedNodeIds.has(activePort.nodeId)) {
-      setActivePort(null)
-    }
-
-    setMessage(
-      removedCount > 0
-        ? `Device deleted. Removed ${removedCount} placed node(s).`
-        : 'Device deleted.',
-    )
+    if (activePort && removedNodeIds.has(activePort.nodeId)) setActivePort(null)
     return true
   }
 
@@ -379,67 +477,39 @@ function App() {
     portKind: PortKind,
     nextLabel: string,
     nextKind: PortKind,
+    nextConnectorCategory: ConnectorCategory,
+    nextConnectorType: string,
   ): boolean => {
     const trimmed = nextLabel.trim()
-    if (!trimmed) {
-      setMessage('Port label is required.')
-      return false
-    }
-
+    if (!trimmed) return false
     const nextPortId = toSlug(trimmed)
-    if (!nextPortId) {
-      setMessage('Port label must include letters or numbers.')
-      return false
-    }
-
+    if (!nextPortId) return false
     const targetDevice = deviceList.find((device) => device.id === deviceId)
-    if (!targetDevice) {
-      setMessage('Device not found.')
-      return false
-    }
+    if (!targetDevice) return false
 
     const existingPorts = [...targetDevice.inputs, ...targetDevice.outputs].filter(
       (port) => !(port.id === portId && port.kind === portKind),
     )
-    if (existingPorts.some((port) => port.id === nextPortId)) {
-      setMessage('This device already has a port with that name.')
-      return false
-    }
+    if (existingPorts.some((port) => port.id === nextPortId)) return false
 
     setDeviceList((current) =>
       current.map((device) => {
-        if (device.id !== deviceId) {
-          return device
-        }
-
+        if (device.id !== deviceId) return device
         const remainingInputs = device.inputs.filter((port) => port.id !== portId)
         const remainingOutputs = device.outputs.filter((port) => port.id !== portId)
-        const nextPort = { id: nextPortId, label: trimmed, kind: nextKind }
-
+        const nextPort = {
+          id: nextPortId,
+          label: trimmed,
+          kind: nextKind,
+          connectorCategory: nextConnectorCategory,
+          connectorType: nextConnectorType,
+        }
         if (nextKind === 'input') {
           return { ...device, inputs: [...remainingInputs, nextPort], outputs: remainingOutputs }
         }
         return { ...device, inputs: remainingInputs, outputs: [...remainingOutputs, nextPort] }
       }),
     )
-
-    const affectedNodeIds = getNodeIdsForDevice(nodes, deviceId)
-    setConnections((current) =>
-      current.filter((connection) => {
-        const fromMatch =
-          affectedNodeIds.has(connection.from.nodeId) &&
-          connection.from.portId === portId
-        const toMatch =
-          affectedNodeIds.has(connection.to.nodeId) && connection.to.portId === portId
-        return !(fromMatch || toMatch)
-      }),
-    )
-
-    if (activePort && activePort.portId === portId) {
-      setActivePort(null)
-    }
-
-    setMessage('Port updated. Related connections were removed.')
     return true
   }
 
@@ -450,42 +520,120 @@ function App() {
   ): boolean => {
     setDeviceList((current) =>
       current.map((device) => {
-        if (device.id !== deviceId) {
-          return device
-        }
-
+        if (device.id !== deviceId) return device
         if (portKind === 'input') {
-          return {
-            ...device,
-            inputs: device.inputs.filter((port) => port.id !== portId),
-          }
+          return { ...device, inputs: device.inputs.filter((port) => port.id !== portId) }
         }
-
-        return {
-          ...device,
-          outputs: device.outputs.filter((port) => port.id !== portId),
-        }
+        return { ...device, outputs: device.outputs.filter((port) => port.id !== portId) }
       }),
     )
+    return true
+  }
 
-    const affectedNodeIds = getNodeIdsForDevice(nodes, deviceId)
-    setConnections((current) =>
-      current.filter((connection) => {
-        const fromMatch =
-          affectedNodeIds.has(connection.from.nodeId) &&
-          connection.from.portId === portId
-        const toMatch =
-          affectedNodeIds.has(connection.to.nodeId) && connection.to.portId === portId
-        return !(fromMatch || toMatch)
-      }),
-    )
+  const downloadFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    anchor.click()
+    window.URL.revokeObjectURL(url)
+  }
 
-    if (activePort && activePort.portId === portId) {
-      setActivePort(null)
+  const handleExportProject = () => {
+    const payload: ProjectExport = {
+      format: 'live-show-schematic-project',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      state: { categories, deviceList, nodes, connections },
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    downloadFile(`schematic-project-${stamp}.json`, JSON.stringify(payload, null, 2))
+    setMessage('Project exported.')
+  }
+
+  const parseImportedState = (parsed: unknown): PersistedState | null => {
+    if (!parsed || typeof parsed !== 'object') return null
+
+    const maybePayload = parsed as Partial<ProjectExport>
+    const maybeState =
+      maybePayload.format === 'live-show-schematic-project'
+        ? maybePayload.state
+        : (parsed as Partial<PersistedState>)
+
+    if (!maybeState || typeof maybeState !== 'object') return null
+
+    const categoriesValue = (maybeState as Partial<PersistedState>).categories
+    const devicesValue = (maybeState as Partial<PersistedState>).deviceList
+    const nodesValue = (maybeState as Partial<PersistedState>).nodes
+    const connectionsValue = (maybeState as Partial<PersistedState>).connections
+
+    if (
+      !Array.isArray(categoriesValue) ||
+      !Array.isArray(devicesValue) ||
+      !Array.isArray(nodesValue) ||
+      !Array.isArray(connectionsValue)
+    ) {
+      return null
     }
 
-    setMessage('Port deleted. Related connections were removed.')
-    return true
+    return {
+      categories: categoriesValue as DeviceCategory[],
+      deviceList: normalizeDeviceList(devicesValue as DeviceDefinition[]),
+      nodes: nodesValue as NodeInstance[],
+      connections: connectionsValue as Connection[],
+    }
+  }
+
+  const handleImportProject: ChangeEventHandler<HTMLInputElement> = async (
+    event,
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const raw = await file.text()
+      const parsed = JSON.parse(raw) as unknown
+      const nextState = parseImportedState(parsed)
+
+      if (!nextState) {
+        setMessage('Invalid project file.')
+        return
+      }
+
+      setCategories(nextState.categories)
+      setDeviceList(nextState.deviceList)
+      setNodes(nextState.nodes)
+      setConnections(nextState.connections)
+      setActivePort(null)
+      setMessage('Project imported.')
+    } catch {
+      setMessage('Failed to import project file.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const handleClearCanvas = () => {
+    if (nodes.length === 0 && connections.length === 0) {
+      setMessage('Canvas is already empty.')
+      setIsClearCanvasArmed(false)
+      return
+    }
+
+    if (!isClearCanvasArmed) {
+      setIsClearCanvasArmed(true)
+      setMessage(
+        'Press "Confirm Clear Canvas" to remove all nodes and connections. Library stays.',
+      )
+      return
+    }
+
+    setNodes([])
+    setConnections([])
+    setActivePort(null)
+    setIsClearCanvasArmed(false)
+    setMessage('Canvas cleared.')
   }
 
   return (
@@ -497,9 +645,12 @@ function App() {
         onCreateCategory={handleCreateCategory}
         onCreateDevice={handleCreateDevice}
         onAddPort={handleAddPort}
+        onBulkAddPorts={handleBulkAddPorts}
+        onBulkRemovePorts={handleBulkRemovePorts}
         onUpdateCategory={handleUpdateCategory}
         onDeleteCategory={handleDeleteCategory}
         onUpdateDevice={handleUpdateDevice}
+        onMoveDevice={handleMoveDevice}
         onDeleteDevice={handleDeleteDevice}
         onUpdatePort={handleUpdatePort}
         onDeletePort={handleDeletePort}
@@ -508,7 +659,49 @@ function App() {
       <section className="workspace">
         <header className="workspace-header">
           <h1>Live Show Signal Routing</h1>
-          <p>Build your routing map by placing devices and linking output ports to input ports.</p>
+          <p>
+            Build your routing map by placing devices and linking compatible
+            ports.
+          </p>
+          <div className="workspace-actions">
+            <button type="button" onClick={handleExportProject}>
+              Export Project
+            </button>
+            <button
+              type="button"
+              onClick={() => importInputRef.current?.click()}
+            >
+              Import Project
+            </button>
+            {isClearCanvasArmed ? (
+              <>
+                <button type="button" className="danger" onClick={handleClearCanvas}>
+                  Confirm Clear Canvas
+                </button>
+                <button
+                  type="button"
+                  className="neutral"
+                  onClick={() => {
+                    setIsClearCanvasArmed(false)
+                    setMessage('Clear canvas cancelled.')
+                  }}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button type="button" className="danger" onClick={handleClearCanvas}>
+                Clear Canvas
+              </button>
+            )}
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleImportProject}
+              style={{ display: 'none' }}
+            />
+          </div>
         </header>
 
         {message ? <p className="status-message">{message}</p> : null}
