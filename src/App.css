@@ -1,0 +1,310 @@
+.app-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+  background: #11141b;
+  color: #e8ebf0;
+}
+
+.library-panel {
+  border-right: 1px solid #2a3342;
+  padding: 1rem;
+  background: #141a23;
+  overflow-y: auto;
+}
+
+.library-panel h2 {
+  margin: 0 0 1rem;
+}
+
+.library-category {
+  margin-bottom: 1.1rem;
+}
+
+.library-category h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  color: #9cb1d2;
+}
+
+.library-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.library-device {
+  background: #1d2734;
+  border: 1px solid #33445d;
+  border-radius: 8px;
+  color: inherit;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+}
+
+.library-device small {
+  display: block;
+  color: #9bb0ce;
+}
+
+.library-manager {
+  margin-top: 1.2rem;
+  border-top: 1px solid #2a3342;
+  padding-top: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.library-manager h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #9cb1d2;
+}
+
+.manager-form {
+  display: grid;
+  gap: 0.35rem;
+  background: #182131;
+  border: 1px solid #33445d;
+  border-radius: 8px;
+  padding: 0.55rem;
+}
+
+.manager-form strong {
+  font-size: 0.8rem;
+  color: #c2d2ea;
+}
+
+.manager-form input,
+.manager-form select,
+.manager-form button {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #3a4f6f;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.82rem;
+  color: #e8ebf0;
+  background: #23324a;
+}
+
+.manager-form button {
+  cursor: pointer;
+  background: #2f4770;
+}
+
+.manager-form button:disabled,
+.manager-form select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.manager-list {
+  display: grid;
+  gap: 0.4rem;
+  background: #182131;
+  border: 1px solid #33445d;
+  border-radius: 8px;
+  padding: 0.55rem;
+}
+
+.manager-list > strong {
+  font-size: 0.8rem;
+  color: #c2d2ea;
+}
+
+.manager-list > small {
+  color: #8ea4c4;
+}
+
+.manager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  border: 1px solid #2a3c56;
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
+  background: #1c283a;
+}
+
+.manager-row span {
+  font-size: 0.78rem;
+}
+
+.manager-row div {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.manager-row button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  font-size: 0.72rem;
+  padding: 0.22rem 0.35rem;
+  cursor: pointer;
+}
+
+.manager-device {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.port-row {
+  margin-left: 0.45rem;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.workspace-header {
+  padding: 1rem;
+  border-bottom: 1px solid #2a3342;
+  background: #141a23;
+}
+
+.workspace-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.workspace-header p {
+  margin: 0.35rem 0 0;
+  color: #a8b7cf;
+}
+
+.status-message {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  background: #1f2b3b;
+  border-bottom: 1px solid #2a3342;
+  color: #d7e7ff;
+}
+
+.canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.canvas-toolbar {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #2a3342;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #b3c2da;
+  background: #192233;
+}
+
+.active-connection {
+  color: #90c4ff;
+}
+
+.canvas-stage {
+  position: relative;
+  flex: 1;
+  min-height: 540px;
+  background: radial-gradient(circle at 1px 1px, #3a4e6a 1px, #11141b 0);
+  background-size: 24px 24px;
+  overflow: auto;
+}
+
+.device-node {
+  position: absolute;
+  width: 220px;
+  border: 1px solid #3a4f6f;
+  border-radius: 10px;
+  background: #1a2432;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.device-node header {
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid #2e405a;
+  font-weight: 600;
+  cursor: grab;
+}
+
+.ports-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  padding: 0.7rem;
+}
+
+.ports-col {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ports-col strong {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: #9fb4d6;
+}
+
+.ports-col small {
+  color: #8397b6;
+}
+
+.port-button {
+  border: 1px solid #3a4f6f;
+  border-radius: 6px;
+  background: #223149;
+  color: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+
+.port-button.input {
+  border-color: #3e6a47;
+}
+
+.port-button.output {
+  border-color: #6a4a3e;
+}
+
+.port-button.active {
+  outline: 2px solid #89c4ff;
+  outline-offset: 1px;
+}
+
+.connections-list {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 340px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid #3a4f6f;
+  border-radius: 8px;
+  background: rgba(20, 26, 35, 0.94);
+  padding: 0.7rem;
+}
+
+.connections-list h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.connections-list p {
+  margin: 0;
+  color: #9bb0ce;
+}
+
+.connections-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
