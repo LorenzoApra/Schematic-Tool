@@ -48,11 +48,56 @@
 }
 
 .library-manager {
-  margin-top: 1.2rem;
-  border-top: 1px solid #2a3342;
-  padding-top: 0.9rem;
   display: grid;
   gap: 0.8rem;
+}
+
+.open-manager-button {
+  margin-top: 0.8rem;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.manager-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 10, 16, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.manager-modal {
+  width: min(980px, 95vw);
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #3a4f6f;
+  background: #111826;
+  padding: 0.9rem;
+}
+
+.manager-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.manager-close-button {
+  border-radius: 6px;
+  border: 1px solid #3a4f6f;
+  background: #263750;
+  color: #e8ebf0;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
 }
 
 .library-manager h3 {
@@ -146,9 +191,48 @@
   cursor: pointer;
 }
 
+.inline-edit {
+  width: 100%;
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.inline-edit input,
+.inline-edit select {
+  min-width: 0;
+  flex: 1;
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #23324a;
+  color: #e8ebf0;
+  font-size: 0.76rem;
+  padding: 0.22rem 0.35rem;
+}
+
 .manager-device {
   display: grid;
   gap: 0.3rem;
+}
+
+.manager-move {
+  display: grid;
+  gap: 0.25rem;
+  margin-left: 0.45rem;
+}
+
+.manager-move select {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #23324a;
+  color: #e8ebf0;
+  font-size: 0.76rem;
+  padding: 0.22rem 0.35rem;
+}
+
+.manager-move small {
+  color: #8ea4c4;
+  font-size: 0.7rem;
 }
 
 .port-row {
@@ -215,6 +299,23 @@
   overflow: auto;
 }
 
+.connection-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.connection-line {
+  fill: none;
+  stroke: #8fc6ff;
+  stroke-width: 2;
+  opacity: 0.9;
+  pointer-events: auto;
+  cursor: context-menu;
+}
+
 .device-node {
   position: absolute;
   width: 220px;
@@ -228,7 +329,59 @@
   padding: 0.55rem 0.7rem;
   border-bottom: 1px solid #2e405a;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   cursor: grab;
+}
+
+.delete-node-button {
+  border-radius: 5px;
+  border: 1px solid #6a4a3e;
+  background: #3e2a25;
+  color: #f2d1cf;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
+.rename-node-button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #263750;
+  color: #d6e7ff;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
+.node-name-editor {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.node-name-editor input {
+  min-width: 0;
+  flex: 1;
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #23324a;
+  color: #e8ebf0;
+  font-size: 0.72rem;
+  padding: 0.16rem 0.28rem;
+}
+
+.node-name-editor button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
 }
 
 .ports-row {
@@ -289,6 +442,52 @@
   padding: 0.7rem;
 }
 
+.connection-legend {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 220px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid #3a4f6f;
+  border-radius: 8px;
+  background: rgba(20, 26, 35, 0.94);
+  padding: 0.7rem;
+}
+
+.connection-legend h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.connection-legend p {
+  margin: 0;
+  color: #9bb0ce;
+}
+
+.connection-legend ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.connection-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex: 0 0 auto;
+}
+
 .connections-list h3 {
   margin: 0 0 0.4rem;
   font-size: 0.9rem;
@@ -307,4 +506,21 @@
   gap: 0.25rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.78rem;
+}
+
+.connections-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.connection-remove-button {
+  border-radius: 5px;
+  border: 1px solid #6a4a3e;
+  background: #3e2a25;
+  color: #f2d1cf;
+  font-size: 0.7rem;
+  padding: 0.16rem 0.35rem;
+  cursor: pointer;
 }

@@ -1,9 +1,17 @@
 export type PortKind = 'input' | 'output'
+export type ConnectorCategory =
+  | 'video'
+  | 'audio'
+  | 'network'
+  | 'lighting'
+  | 'power'
 
 export interface PortDefinition {
   id: string
   label: string
   kind: PortKind
+  connectorCategory: ConnectorCategory
+  connectorType: string
 }
 
 export interface DeviceDefinition {
@@ -24,6 +32,7 @@ export interface NodeInstance {
   deviceId: string
   x: number
   y: number
+  customName?: string
 }
 
 export interface PortRef {

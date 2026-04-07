@@ -1,13 +1,17 @@
+import { useState } from 'react'
 import type { DeviceDefinition, PortDefinition, PortRef } from '../types/schematic'
 
 interface DeviceNodeProps {
   id: string
   x: number
   y: number
+  displayName: string
   device: DeviceDefinition
   activePort: PortRef | null
   onPortClick: (port: PortRef) => void
   onDragStart: (nodeId: string, clientX: number, clientY: number) => void
+  onDeleteNode: (nodeId: string) => void
+  onRenameNode: (nodeId: string, name: string) => void
 }
 
 function PortButton({
@@ -39,7 +43,7 @@ function PortButton({
       }
       title={`${port.label} (${port.kind})`}
     >
-      {port.label}
+      {port.label} [{port.connectorType}]
     </button>
   )
 }
@@ -48,11 +52,17 @@ export function DeviceNode({
   id,
   x,
   y,
+  displayName,
   device,
   activePort,
   onPortClick,
   onDragStart,
+  onDeleteNode,
+  onRenameNode,
 }: DeviceNodeProps) {
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [nextName, setNextName] = useState(displayName)
+
   return (
     <article
       className="device-node"
@@ -65,7 +75,44 @@ export function DeviceNode({
         onDragStart(id, event.clientX, event.clientY)
       }}
     >
-      <header>{device.name}</header>
+      <header>
+        {isEditingName ? (
+          <div className="node-name-editor">
+            <input
+              value={nextName}
+              onChange={(event) => setNextName(event.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                onRenameNode(id, nextName)
+                setIsEditingName(false)
+              }}
+            >
+              Save
+            </button>
+          </div>
+        ) : (
+          <span>{displayName}</span>
+        )}
+        <button
+          type="button"
+          className="rename-node-button"
+          onClick={() => {
+            setNextName(displayName)
+            setIsEditingName((current) => !current)
+          }}
+        >
+          Rename
+        </button>
+        <button
+          type="button"
+          className="delete-node-button"
+          onClick={() => onDeleteNode(id)}
+        >
+          Remove
+        </button>
+      </header>
       <div className="ports-row">
         <div className="ports-col">
           <strong>Inputs</strong>

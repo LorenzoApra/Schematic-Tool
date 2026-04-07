@@ -1,11 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { DeviceLibrary } from './components/DeviceLibrary'
 import { SchematicCanvas } from './components/SchematicCanvas'
+import {
+  defaultConnectorCategory,
+  defaultConnectorType,
+} from './data/connectors'
 import { deviceCategories, devices } from './data/deviceLibrary'
 import { validateConnection } from './lib/validation'
 import type {
   Connection,
+  ConnectorCategory,
   DeviceCategory,
   DeviceDefinition,
   NodeInstance,
@@ -21,6 +26,74 @@ function toSlug(value: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+const STORAGE_KEY = 'live-show-schematic-state-v1'
+
+interface PersistedState {
+  categories: DeviceCategory[]
+  deviceList: DeviceDefinition[]
+  nodes: NodeInstance[]
+  connections: Connection[]
+}
+
+function normalizeDeviceList(deviceList: DeviceDefinition[]): DeviceDefinition[] {
+  return deviceList.map((device) => ({
+    ...device,
+    inputs: device.inputs.map((port) => ({
+      ...port,
+      connectorCategory: port.connectorCategory ?? defaultConnectorCategory,
+      connectorType: port.connectorType ?? defaultConnectorType,
+    })),
+    outputs: device.outputs.map((port) => ({
+      ...port,
+      connectorCategory: port.connectorCategory ?? defaultConnectorCategory,
+      connectorType: port.connectorType ?? defaultConnectorType,
+    })),
+  }))
+}
+
+function loadInitialState(): PersistedState {
+  if (typeof window === 'undefined') {
+    return {
+      categories: deviceCategories,
+      deviceList: normalizeDeviceList(devices),
+      nodes: [],
+      connections: [],
+    }
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) {
+      return {
+        categories: deviceCategories,
+        deviceList: normalizeDeviceList(devices),
+        nodes: [],
+        connections: [],
+      }
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PersistedState>
+    return {
+      categories:
+        Array.isArray(parsed.categories) && parsed.categories.length > 0
+          ? parsed.categories
+          : deviceCategories,
+      deviceList: normalizeDeviceList(
+        Array.isArray(parsed.deviceList) ? parsed.deviceList : devices,
+      ),
+      nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
+      connections: Array.isArray(parsed.connections) ? parsed.connections : [],
+    }
+  } catch {
+    return {
+      categories: deviceCategories,
+      deviceList: normalizeDeviceList(devices),
+      nodes: [],
+      connections: [],
+    }
+  }
+}
+
 function getNodeIdsForDevice(nodes: NodeInstance[], deviceId: string): Set<string> {
   return new Set(
     nodes.filter((node) => node.deviceId === deviceId).map((node) => node.id),
@@ -28,12 +101,30 @@ function getNodeIdsForDevice(nodes: NodeInstance[], deviceId: string): Set<strin
 }
 
 function App() {
-  const [categories, setCategories] = useState<DeviceCategory[]>(deviceCategories)
-  const [deviceList, setDeviceList] = useState<DeviceDefinition[]>(devices)
-  const [nodes, setNodes] = useState<NodeInstance[]>([])
-  const [connections, setConnections] = useState<Connection[]>([])
+  const [initialState] = useState<PersistedState>(() => loadInitialState())
+  const [categories, setCategories] = useState<DeviceCategory[]>(
+    initialState.categories,
+  )
+  const [deviceList, setDeviceList] = useState<DeviceDefinition[]>(
+    initialState.deviceList,
+  )
+  const [nodes, setNodes] = useState<NodeInstance[]>(initialState.nodes)
+  const [connections, setConnections] = useState<Connection[]>(
+    initialState.connections,
+  )
   const [activePort, setActivePort] = useState<PortRef | null>(null)
   const [message, setMessage] = useState<string>('')
+
+  useEffect(() => {
+    const state: PersistedState = {
+      categories,
+      deviceList,
+      nodes,
+      connections,
+    }
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  }, [categories, deviceList, nodes, connections])
 
   const devicesById = useMemo(
     () => Object.fromEntries(deviceList.map((device) => [device.id, device])),
@@ -62,10 +153,26 @@ function App() {
       return
     }
 
+    const source = activePort.kind === 'output' ? activePort : port
+    const target = activePort.kind === 'output' ? port : activePort
+
     const validation = validateConnection({
-      source: activePort,
-      target: port,
+      source,
+      target,
       connections,
+      resolvePort: (ref) => {
+        const node = nodes.find((entry) => entry.id === ref.nodeId)
+        if (!node) {
+          return null
+        }
+        const device = devicesById[node.deviceId]
+        if (!device) {
+          return null
+        }
+
+        const portList = ref.kind === 'input' ? device.inputs : device.outputs
+        return portList.find((entry) => entry.id === ref.portId) ?? null
+      },
     })
 
     if (!validation.valid) {
@@ -79,8 +186,8 @@ function App() {
       ...current,
       {
         id,
-        from: activePort,
-        to: port,
+        from: source,
+        to: target,
       },
     ])
 
@@ -92,6 +199,42 @@ function App() {
     setNodes((current) =>
       current.map((node) => (node.id === nodeId ? { ...node, x, y } : node)),
     )
+  }
+
+  const handleDeleteNode = (nodeId: string) => {
+    setNodes((current) => current.filter((node) => node.id !== nodeId))
+    setConnections((current) =>
+      current.filter(
+        (connection) =>
+          connection.from.nodeId !== nodeId && connection.to.nodeId !== nodeId,
+      ),
+    )
+    if (activePort?.nodeId === nodeId) {
+      setActivePort(null)
+    }
+    setMessage('Device removed from canvas.')
+  }
+
+  const handleRenameNode = (nodeId: string, name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setMessage('Device name on canvas cannot be empty.')
+      return
+    }
+
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === nodeId ? { ...node, customName: trimmed } : node,
+      ),
+    )
+    setMessage('Device on canvas renamed.')
+  }
+
+  const handleDeleteConnection = (connectionId: string) => {
+    setConnections((current) =>
+      current.filter((connection) => connection.id !== connectionId),
+    )
+    setMessage('Connection removed.')
   }
 
   const handleCreateCategory = (label: string): boolean => {
@@ -160,6 +303,8 @@ function App() {
     deviceId: string,
     kind: PortKind,
     label: string,
+    connectorCategory: ConnectorCategory,
+    connectorType: string,
   ): boolean => {
     const trimmed = label.trim()
     if (!deviceId) {
@@ -196,13 +341,159 @@ function App() {
         }
 
         const nextPort = { id: portId, label: trimmed, kind }
-        if (kind === 'input') {
-          return { ...device, inputs: [...device.inputs, nextPort] }
+        const portWithConnector = {
+          ...nextPort,
+          connectorCategory,
+          connectorType,
         }
-        return { ...device, outputs: [...device.outputs, nextPort] }
+        if (kind === 'input') {
+          return { ...device, inputs: [...device.inputs, portWithConnector] }
+        }
+        return { ...device, outputs: [...device.outputs, portWithConnector] }
       }),
     )
     setMessage(`Added ${kind} port "${trimmed}" to ${targetDevice.name}.`)
+    return true
+  }
+
+  const handleBulkAddPorts = (
+    deviceId: string,
+    kind: PortKind,
+    labelPrefix: string,
+    count: number,
+    startIndex: number,
+    connectorCategory: ConnectorCategory,
+    connectorType: string,
+  ): boolean => {
+    const prefix = labelPrefix.trim()
+    if (!deviceId) {
+      setMessage('Select a device before bulk adding ports.')
+      return false
+    }
+    if (!prefix) {
+      setMessage('Port label prefix is required.')
+      return false
+    }
+    if (!Number.isFinite(count) || count <= 0) {
+      setMessage('Bulk count must be greater than 0.')
+      return false
+    }
+
+    const safeStartIndex = Number.isFinite(startIndex) ? startIndex : 1
+    const device = deviceList.find((entry) => entry.id === deviceId)
+    if (!device) {
+      setMessage('Device not found.')
+      return false
+    }
+
+    const existingIds = new Set(
+      [...device.inputs, ...device.outputs].map((port) => port.id),
+    )
+    const newPorts = Array.from({ length: count }, (_, index) => {
+      const label = `${prefix} ${safeStartIndex + index}`.trim()
+      const baseId = toSlug(label) || `port-${Date.now()}-${index}`
+      let portId = baseId
+      let suffix = 2
+      while (existingIds.has(portId)) {
+        portId = `${baseId}-${suffix}`
+        suffix += 1
+      }
+      existingIds.add(portId)
+
+      return {
+        id: portId,
+        label,
+        kind,
+        connectorCategory,
+        connectorType,
+      }
+    })
+
+    setDeviceList((current) =>
+      current.map((entry) => {
+        if (entry.id !== deviceId) {
+          return entry
+        }
+        if (kind === 'input') {
+          return { ...entry, inputs: [...entry.inputs, ...newPorts] }
+        }
+        return { ...entry, outputs: [...entry.outputs, ...newPorts] }
+      }),
+    )
+    setMessage(`Added ${newPorts.length} ${kind} ports to ${device.name}.`)
+    return true
+  }
+
+  const handleBulkRemovePorts = (
+    deviceId: string,
+    kind: PortKind,
+    labelPrefix: string,
+    count: number,
+    connectorCategory: ConnectorCategory,
+    connectorType: string,
+  ): boolean => {
+    if (!deviceId) {
+      setMessage('Select a device before bulk removing ports.')
+      return false
+    }
+    if (!Number.isFinite(count) || count <= 0) {
+      setMessage('Bulk remove count must be greater than 0.')
+      return false
+    }
+    const prefix = labelPrefix.trim().toLowerCase()
+    const device = deviceList.find((entry) => entry.id === deviceId)
+    if (!device) {
+      setMessage('Device not found.')
+      return false
+    }
+
+    const sourcePorts = kind === 'input' ? device.inputs : device.outputs
+    const matches = sourcePorts.filter((port) => {
+      const prefixOk = prefix ? port.label.toLowerCase().startsWith(prefix) : true
+      return (
+        prefixOk &&
+        port.connectorCategory === connectorCategory &&
+        port.connectorType === connectorType
+      )
+    })
+    const removedPorts = matches.slice(0, count)
+    if (removedPorts.length === 0) {
+      setMessage('No matching ports found for bulk remove.')
+      return false
+    }
+    const removedIds = new Set(removedPorts.map((port) => port.id))
+
+    setDeviceList((current) =>
+      current.map((entry) => {
+        if (entry.id !== deviceId) {
+          return entry
+        }
+        if (kind === 'input') {
+          return {
+            ...entry,
+            inputs: entry.inputs.filter((port) => !removedIds.has(port.id)),
+          }
+        }
+        return {
+          ...entry,
+          outputs: entry.outputs.filter((port) => !removedIds.has(port.id)),
+        }
+      }),
+    )
+
+    const affectedNodeIds = getNodeIdsForDevice(nodes, deviceId)
+    setConnections((current) =>
+      current.filter((connection) => {
+        const fromMatch =
+          affectedNodeIds.has(connection.from.nodeId) &&
+          removedIds.has(connection.from.portId)
+        const toMatch =
+          affectedNodeIds.has(connection.to.nodeId) &&
+          removedIds.has(connection.to.portId)
+        return !(fromMatch || toMatch)
+      }),
+    )
+    setMessage(`Removed ${removedPorts.length} ${kind} ports from ${device.name}.`)
     return true
   }
 
@@ -223,8 +514,12 @@ function App() {
   }
 
   const handleDeleteCategory = (categoryId: string): boolean => {
-    if (deviceList.some((device) => device.category === categoryId)) {
-      setMessage('Cannot delete a category that still has devices.')
+    const devicesInCategory = deviceList.filter(
+      (device) => device.category === categoryId,
+    )
+
+    if (devicesInCategory.length > 0) {
+      setMessage('Cannot delete category: move or delete its devices first.')
       return false
     }
 
@@ -287,12 +582,35 @@ function App() {
     return true
   }
 
+  const handleMoveDevice = (deviceId: string, nextCategoryId: string): boolean => {
+    if (!categories.some((category) => category.id === nextCategoryId)) {
+      setMessage('Selected category does not exist.')
+      return false
+    }
+
+    const target = deviceList.find((device) => device.id === deviceId)
+    if (!target) {
+      setMessage('Device not found.')
+      return false
+    }
+
+    setDeviceList((current) =>
+      current.map((device) =>
+        device.id === deviceId ? { ...device, category: nextCategoryId } : device,
+      ),
+    )
+    setMessage(`Moved "${target.name}" to a new category.`)
+    return true
+  }
+
   const handleUpdatePort = (
     deviceId: string,
     portId: string,
     portKind: PortKind,
     nextLabel: string,
     nextKind: PortKind,
+    nextConnectorCategory: ConnectorCategory,
+    nextConnectorType: string,
   ): boolean => {
     const trimmed = nextLabel.trim()
     if (!trimmed) {
@@ -328,7 +646,13 @@ function App() {
 
         const remainingInputs = device.inputs.filter((port) => port.id !== portId)
         const remainingOutputs = device.outputs.filter((port) => port.id !== portId)
-        const nextPort = { id: nextPortId, label: trimmed, kind: nextKind }
+        const nextPort = {
+          id: nextPortId,
+          label: trimmed,
+          kind: nextKind,
+          connectorCategory: nextConnectorCategory,
+          connectorType: nextConnectorType,
+        }
 
         if (nextKind === 'input') {
           return { ...device, inputs: [...remainingInputs, nextPort], outputs: remainingOutputs }
@@ -411,9 +735,12 @@ function App() {
         onCreateCategory={handleCreateCategory}
         onCreateDevice={handleCreateDevice}
         onAddPort={handleAddPort}
+        onBulkAddPorts={handleBulkAddPorts}
+        onBulkRemovePorts={handleBulkRemovePorts}
         onUpdateCategory={handleUpdateCategory}
         onDeleteCategory={handleDeleteCategory}
         onUpdateDevice={handleUpdateDevice}
+        onMoveDevice={handleMoveDevice}
         onDeleteDevice={handleDeleteDevice}
         onUpdatePort={handleUpdatePort}
         onDeletePort={handleDeletePort}
@@ -434,6 +761,9 @@ function App() {
           activePort={activePort}
           onPortClick={handlePortClick}
           onNodeMove={handleNodeMove}
+          onDeleteNode={handleDeleteNode}
+          onRenameNode={handleRenameNode}
+          onDeleteConnection={handleDeleteConnection}
         />
       </section>
     </div>
