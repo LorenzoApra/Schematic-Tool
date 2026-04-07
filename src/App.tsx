@@ -27,6 +27,22 @@ function getNodeIdsForDevice(nodes: NodeInstance[], deviceId: string): Set<strin
   )
 }
 
+function resolveConnectionDirection(
+  first: PortRef,
+  second: PortRef,
+): { source: PortRef; target: PortRef } | null {
+  const canStart = (kind: PortKind) => kind === 'output' || kind === 'bidirectional'
+  const canEnd = (kind: PortKind) => kind === 'input' || kind === 'bidirectional'
+
+  if (canStart(first.kind) && canEnd(second.kind)) {
+    return { source: first, target: second }
+  }
+  if (canStart(second.kind) && canEnd(first.kind)) {
+    return { source: second, target: first }
+  }
+  return null
+}
+
 function App() {
   const [categories, setCategories] = useState<DeviceCategory[]>(deviceCategories)
   const [deviceList, setDeviceList] = useState<DeviceDefinition[]>(devices)
@@ -49,7 +65,7 @@ function App() {
       {
         id,
         deviceId,
-        x: 24 + (index % 3) * 230,
+        x: 24 + (index % 3) * 320,
         y: 24 + Math.floor(index / 3) * 180,
       },
     ])
@@ -62,10 +78,42 @@ function App() {
       return
     }
 
+<<<<<<< Updated upstream
+=======
+    const resolved = resolveConnectionDirection(activePort, port)
+    if (!resolved) {
+      setMessage('Invalid direction. Use output/bidirectional to input/bidirectional.')
+      setActivePort(null)
+      return
+    }
+    const { source, target } = resolved
+
+>>>>>>> Stashed changes
     const validation = validateConnection({
       source: activePort,
       target: port,
       connections,
+<<<<<<< Updated upstream
+=======
+      resolvePort: (ref) => {
+        const node = nodes.find((entry) => entry.id === ref.nodeId)
+        if (!node) {
+          return null
+        }
+        const device = devicesById[node.deviceId]
+        if (!device) {
+          return null
+        }
+
+        const portList =
+          ref.kind === 'input'
+            ? device.inputs
+            : ref.kind === 'output'
+              ? device.outputs
+              : [...device.inputs, ...device.outputs]
+        return portList.find((entry) => entry.id === ref.portId) ?? null
+      },
+>>>>>>> Stashed changes
     })
 
     if (!validation.valid) {
@@ -94,6 +142,53 @@ function App() {
     )
   }
 
+<<<<<<< Updated upstream
+=======
+  const handleDeleteNode = (nodeId: string) => {
+    setNodes((current) => current.filter((node) => node.id !== nodeId))
+    setConnections((current) =>
+      current.filter(
+        (connection) =>
+          connection.from.nodeId !== nodeId && connection.to.nodeId !== nodeId,
+      ),
+    )
+    if (activePort?.nodeId === nodeId) {
+      setActivePort(null)
+    }
+    setMessage('Device removed from canvas.')
+  }
+
+  const handleRenameNode = (nodeId: string, name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setMessage('Device name on canvas cannot be empty.')
+      return
+    }
+
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === nodeId ? { ...node, customName: trimmed } : node,
+      ),
+    )
+    setMessage('Device on canvas renamed.')
+  }
+
+  const handleToggleNodeCollapse = (nodeId: string) => {
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === nodeId ? { ...node, collapsed: !node.collapsed } : node,
+      ),
+    )
+  }
+
+  const handleDeleteConnection = (connectionId: string) => {
+    setConnections((current) =>
+      current.filter((connection) => connection.id !== connectionId),
+    )
+    setMessage('Connection removed.')
+  }
+
+>>>>>>> Stashed changes
   const handleCreateCategory = (label: string): boolean => {
     const trimmed = label.trim()
     if (!trimmed) {
@@ -434,6 +529,13 @@ function App() {
           activePort={activePort}
           onPortClick={handlePortClick}
           onNodeMove={handleNodeMove}
+<<<<<<< Updated upstream
+=======
+          onDeleteNode={handleDeleteNode}
+          onRenameNode={handleRenameNode}
+          onToggleNodeCollapse={handleToggleNodeCollapse}
+          onDeleteConnection={handleDeleteConnection}
+>>>>>>> Stashed changes
         />
       </section>
     </div>

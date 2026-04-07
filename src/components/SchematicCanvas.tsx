@@ -14,6 +14,13 @@ interface SchematicCanvasProps {
   activePort: PortRef | null
   onPortClick: (port: PortRef) => void
   onNodeMove: (nodeId: string, x: number, y: number) => void
+<<<<<<< Updated upstream
+=======
+  onDeleteNode: (nodeId: string) => void
+  onRenameNode: (nodeId: string, name: string) => void
+  onToggleNodeCollapse: (nodeId: string) => void
+  onDeleteConnection: (connectionId: string) => void
+>>>>>>> Stashed changes
 }
 
 export function SchematicCanvas({
@@ -23,6 +30,13 @@ export function SchematicCanvas({
   activePort,
   onPortClick,
   onNodeMove,
+<<<<<<< Updated upstream
+=======
+  onDeleteNode,
+  onRenameNode,
+  onToggleNodeCollapse,
+  onDeleteConnection,
+>>>>>>> Stashed changes
 }: SchematicCanvasProps) {
   const [dragState, setDragState] = useState<{
     nodeId: string
@@ -31,6 +45,101 @@ export function SchematicCanvas({
   } | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
 
+<<<<<<< Updated upstream
+=======
+  const getPortPosition = (port: PortRef) => {
+    const node = nodes.find((entry) => entry.id === port.nodeId)
+    if (!node) {
+      return null
+    }
+
+    const device = devicesById[node.deviceId]
+    if (!device) {
+      return null
+    }
+
+    const portList =
+      port.kind === 'input'
+        ? device.inputs.filter((entry) => entry.kind === 'input')
+        : port.kind === 'output'
+          ? device.outputs.filter((entry) => entry.kind === 'output')
+          : [...device.inputs, ...device.outputs].filter(
+              (entry) => entry.kind === 'bidirectional',
+            )
+    const portIndex = portList.findIndex((entry) => entry.id === port.portId)
+    if (portIndex < 0) {
+      return null
+    }
+
+    const headerHeight = 36
+    const rowPaddingTop = 12
+    const titleHeight = 16
+    const portBlockHeight = 27
+    const y = node.y + headerHeight + rowPaddingTop + titleHeight + portIndex * portBlockHeight + 10
+    const x =
+      port.kind === 'output' ? node.x + 304 : port.kind === 'input' ? node.x + 6 : node.x + 155
+
+    return { x, y }
+  }
+
+  const getPortDefinition = (port: PortRef) => {
+    const node = nodes.find((entry) => entry.id === port.nodeId)
+    if (!node) {
+      return null
+    }
+
+    const device = devicesById[node.deviceId]
+    if (!device) {
+      return null
+    }
+
+    const portList =
+      port.kind === 'input'
+        ? device.inputs
+        : port.kind === 'output'
+          ? device.outputs
+          : [...device.inputs, ...device.outputs]
+    return portList.find((entry) => entry.id === port.portId) ?? null
+  }
+
+  const getNodeLabel = (nodeId: string) => {
+    const node = nodes.find((entry) => entry.id === nodeId)
+    if (!node) {
+      return nodeId
+    }
+
+    const device = devicesById[node.deviceId]
+    if (!device) {
+      return node.customName?.trim() || nodeId
+    }
+
+    return node.customName?.trim() || device.name
+  }
+
+  const getConnectionColor = (connection: Connection) => {
+    const fromPort = getPortDefinition(connection.from)
+    if (!fromPort) {
+      return fallbackConnectionColor
+    }
+
+    return connectorTypeColors[fromPort.connectorType] ?? fallbackConnectionColor
+  }
+
+  const usedConnectorLegend = Array.from(
+    new Map(
+      connections
+        .map((connection) => {
+          const fromPort = getPortDefinition(connection.from)
+          if (!fromPort) {
+            return null
+          }
+          return [fromPort.connectorType, getConnectionColor(connection)] as const
+        })
+        .filter((entry): entry is readonly [string, string] => entry !== null),
+    ).entries(),
+  )
+
+>>>>>>> Stashed changes
   useEffect(() => {
     if (!dragState) {
       return
@@ -66,7 +175,11 @@ export function SchematicCanvas({
         {activePort ? (
           <span className="active-connection">Selected: {activePort.portId}</span>
         ) : (
+<<<<<<< Updated upstream
           <span>Select an output then an input to connect</span>
+=======
+          <span>Select ports to connect (supports bidirectional)</span>
+>>>>>>> Stashed changes
         )}
       </div>
 
@@ -83,9 +196,20 @@ export function SchematicCanvas({
               id={node.id}
               x={node.x}
               y={node.y}
+<<<<<<< Updated upstream
               device={device}
               activePort={activePort}
               onPortClick={onPortClick}
+=======
+              displayName={node.customName?.trim() || device.name}
+              collapsed={Boolean(node.collapsed)}
+              device={device}
+              activePort={activePort}
+              onPortClick={onPortClick}
+              onDeleteNode={onDeleteNode}
+              onRenameNode={onRenameNode}
+              onToggleCollapse={onToggleNodeCollapse}
+>>>>>>> Stashed changes
               onDragStart={(nodeId, clientX, clientY) => {
                 const rect = canvasRef.current?.getBoundingClientRect()
                 if (!rect) {

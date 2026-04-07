@@ -11,12 +11,18 @@ export function validateConnection({
   target,
   connections,
 }: ValidateConnectionArgs): ValidationResult {
-  if (source.kind !== 'output') {
-    return { valid: false, error: 'Connections must start from an output port.' }
+  if (!['output', 'bidirectional'].includes(source.kind)) {
+    return {
+      valid: false,
+      error: 'Connections must start from an output or bidirectional port.',
+    }
   }
 
-  if (target.kind !== 'input') {
-    return { valid: false, error: 'Connections must end at an input port.' }
+  if (!['input', 'bidirectional'].includes(target.kind)) {
+    return {
+      valid: false,
+      error: 'Connections must end at an input or bidirectional port.',
+    }
   }
 
   if (source.nodeId === target.nodeId && source.portId === target.portId) {

@@ -217,10 +217,10 @@
 
 .device-node {
   position: absolute;
-  width: 220px;
+  width: 310px;
   border: 1px solid #3a4f6f;
   border-radius: 10px;
-  background: #1a2432;
+  background: linear-gradient(180deg, #1b2738 0%, #182334 100%);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
@@ -231,9 +231,77 @@
   cursor: grab;
 }
 
+<<<<<<< Updated upstream
+=======
+.delete-node-button {
+  border-radius: 5px;
+  border: 1px solid #6a4a3e;
+  background: #3e2a25;
+  color: #f2d1cf;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
+.rename-node-button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #263750;
+  color: #d6e7ff;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
+.collapse-node-button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #2a3f5d;
+  color: #d6e7ff;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
+.node-name-editor {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.node-name-editor input {
+  min-width: 0;
+  flex: 1;
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #23324a;
+  color: #e8ebf0;
+  font-size: 0.72rem;
+  padding: 0.16rem 0.28rem;
+}
+
+.node-name-editor button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+}
+
+.collapsed-node-meta {
+  padding: 0.55rem 0.7rem 0.65rem;
+  font-size: 0.78rem;
+  color: #b8c8df;
+}
+
+>>>>>>> Stashed changes
 .ports-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 0.7rem;
   padding: 0.7rem;
 }
@@ -269,6 +337,10 @@
 
 .port-button.output {
   border-color: #6a4a3e;
+}
+
+.port-button.bidirectional {
+  border-color: #6b5a9e;
 }
 
 .port-button.active {
