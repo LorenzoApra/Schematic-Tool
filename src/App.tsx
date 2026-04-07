@@ -29,6 +29,8 @@ function toSlug(value: string): string {
 const STORAGE_KEY = 'live-show-schematic-state-v1'
 
 interface PersistedState {
+  projectTitle: string
+  projectDescription: string
   categories: DeviceCategory[]
   deviceList: DeviceDefinition[]
   nodes: NodeInstance[]
@@ -61,6 +63,9 @@ function normalizeDeviceList(deviceList: DeviceDefinition[]): DeviceDefinition[]
 function loadInitialState(): PersistedState {
   if (typeof window === 'undefined') {
     return {
+      projectTitle: 'Live Show Signal Routing',
+      projectDescription:
+        'Build your routing map by placing devices and linking compatible ports.',
       categories: deviceCategories,
       deviceList: normalizeDeviceList(devices),
       nodes: [],
@@ -72,6 +77,9 @@ function loadInitialState(): PersistedState {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) {
       return {
+        projectTitle: 'Live Show Signal Routing',
+        projectDescription:
+          'Build your routing map by placing devices and linking compatible ports.',
         categories: deviceCategories,
         deviceList: normalizeDeviceList(devices),
         nodes: [],
@@ -81,6 +89,15 @@ function loadInitialState(): PersistedState {
 
     const parsed = JSON.parse(raw) as Partial<PersistedState>
     return {
+      projectTitle:
+        typeof parsed.projectTitle === 'string' && parsed.projectTitle.trim()
+          ? parsed.projectTitle.trim()
+          : 'Live Show Signal Routing',
+      projectDescription:
+        typeof parsed.projectDescription === 'string' &&
+        parsed.projectDescription.trim()
+          ? parsed.projectDescription.trim()
+          : 'Build your routing map by placing devices and linking compatible ports.',
       categories:
         Array.isArray(parsed.categories) && parsed.categories.length > 0
           ? parsed.categories
@@ -93,6 +110,9 @@ function loadInitialState(): PersistedState {
     }
   } catch {
     return {
+      projectTitle: 'Live Show Signal Routing',
+      projectDescription:
+        'Build your routing map by placing devices and linking compatible ports.',
       categories: deviceCategories,
       deviceList: normalizeDeviceList(devices),
       nodes: [],
@@ -121,6 +141,10 @@ function resolveConnectionDirection(
 
 function App() {
   const [initialState] = useState<PersistedState>(() => loadInitialState())
+  const [projectTitle, setProjectTitle] = useState(initialState.projectTitle)
+  const [projectDescription, setProjectDescription] = useState(
+    initialState.projectDescription,
+  )
   const [categories, setCategories] = useState<DeviceCategory[]>(initialState.categories)
   const [deviceList, setDeviceList] = useState<DeviceDefinition[]>(
     initialState.deviceList,
@@ -135,9 +159,16 @@ function App() {
   const importInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
-    const state: PersistedState = { categories, deviceList, nodes, connections }
+    const state: PersistedState = {
+      projectTitle,
+      projectDescription,
+      categories,
+      deviceList,
+      nodes,
+      connections,
+    }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [categories, deviceList, nodes, connections])
+  }, [projectTitle, projectDescription, categories, deviceList, nodes, connections])
 
   const devicesById = useMemo(
     () => Object.fromEntries(deviceList.map((device) => [device.id, device])),
@@ -545,10 +576,19 @@ function App() {
       format: 'live-show-schematic-project',
       version: 1,
       exportedAt: new Date().toISOString(),
-      state: { categories, deviceList, nodes, connections },
+      state: {
+        projectTitle,
+        projectDescription,
+        categories,
+        deviceList,
+        nodes,
+        connections,
+      },
     }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-    downloadFile(`schematic-project-${stamp}.json`, JSON.stringify(payload, null, 2))
+    const safeTitle =
+      toSlug(projectTitle) || 'schematic-project'
+    downloadFile(`${safeTitle}-${stamp}.json`, JSON.stringify(payload, null, 2))
     setMessage('Project exported.')
   }
 
@@ -578,6 +618,15 @@ function App() {
     }
 
     return {
+      projectTitle:
+        typeof maybeState.projectTitle === 'string' && maybeState.projectTitle.trim()
+          ? maybeState.projectTitle.trim()
+          : 'Live Show Signal Routing',
+      projectDescription:
+        typeof maybeState.projectDescription === 'string' &&
+        maybeState.projectDescription.trim()
+          ? maybeState.projectDescription.trim()
+          : 'Build your routing map by placing devices and linking compatible ports.',
       categories: categoriesValue as DeviceCategory[],
       deviceList: normalizeDeviceList(devicesValue as DeviceDefinition[]),
       nodes: nodesValue as NodeInstance[],
@@ -605,6 +654,8 @@ function App() {
       setDeviceList(nextState.deviceList)
       setNodes(nextState.nodes)
       setConnections(nextState.connections)
+      setProjectTitle(nextState.projectTitle)
+      setProjectDescription(nextState.projectDescription)
       setActivePort(null)
       setMessage('Project imported.')
     } catch {
@@ -658,11 +709,19 @@ function App() {
 
       <section className="workspace">
         <header className="workspace-header">
-          <h1>Live Show Signal Routing</h1>
-          <p>
-            Build your routing map by placing devices and linking compatible
-            ports.
-          </p>
+          <input
+            className="project-title-input"
+            value={projectTitle}
+            onChange={(event) => setProjectTitle(event.target.value)}
+            placeholder="Project title"
+          />
+          <textarea
+            className="project-description-input"
+            value={projectDescription}
+            onChange={(event) => setProjectDescription(event.target.value)}
+            placeholder="Project description"
+            rows={2}
+          />
           <div className="workspace-actions">
             <button type="button" onClick={handleExportProject}>
               Export Project

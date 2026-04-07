@@ -222,6 +222,30 @@
   color: #a8b7cf;
 }
 
+.project-title-input {
+  width: 100%;
+  border: 1px solid #33445d;
+  border-radius: 8px;
+  background: #101722;
+  color: #e8ebf0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  padding: 0.35rem 0.55rem;
+}
+
+.project-description-input {
+  margin-top: 0.35rem;
+  width: 100%;
+  border: 1px solid #33445d;
+  border-radius: 8px;
+  background: #101722;
+  color: #a8b7cf;
+  font-size: 0.98rem;
+  line-height: 1.35;
+  padding: 0.35rem 0.55rem;
+  resize: vertical;
+}
+
 .workspace-actions {
   margin-top: 0.7rem;
   display: flex;
