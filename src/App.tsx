@@ -145,6 +145,7 @@ function App() {
   const [projectDescription, setProjectDescription] = useState(
     initialState.projectDescription,
   )
+  const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false)
   const [categories, setCategories] = useState<DeviceCategory[]>(initialState.categories)
   const [deviceList, setDeviceList] = useState<DeviceDefinition[]>(
     initialState.deviceList,
@@ -561,6 +562,25 @@ function App() {
     return true
   }
 
+  const handleExpandAllNodesForExport = () => {
+    const previousCollapsedByNodeId = Object.fromEntries(
+      nodes.map((node) => [node.id, Boolean(node.collapsed)]),
+    )
+    setNodes((current) => current.map((node) => ({ ...node, collapsed: false })))
+    return previousCollapsedByNodeId
+  }
+
+  const handleRestoreCollapsedNodes = (
+    collapsedByNodeId: Record<string, boolean>,
+  ) => {
+    setNodes((current) =>
+      current.map((node) => ({
+        ...node,
+        collapsed: collapsedByNodeId[node.id] ?? false,
+      })),
+    )
+  }
+
   const downloadFile = (filename: string, content: string) => {
     const blob = new Blob([content], { type: 'application/json' })
     const url = window.URL.createObjectURL(blob)
@@ -688,24 +708,26 @@ function App() {
   }
 
   return (
-    <div className="app-layout">
-      <DeviceLibrary
-        categories={categories}
-        devices={deviceList}
-        onAddDevice={handleAddDevice}
-        onCreateCategory={handleCreateCategory}
-        onCreateDevice={handleCreateDevice}
-        onAddPort={handleAddPort}
-        onBulkAddPorts={handleBulkAddPorts}
-        onBulkRemovePorts={handleBulkRemovePorts}
-        onUpdateCategory={handleUpdateCategory}
-        onDeleteCategory={handleDeleteCategory}
-        onUpdateDevice={handleUpdateDevice}
-        onMoveDevice={handleMoveDevice}
-        onDeleteDevice={handleDeleteDevice}
-        onUpdatePort={handleUpdatePort}
-        onDeletePort={handleDeletePort}
-      />
+    <div className={`app-layout ${isLibraryCollapsed ? 'sidebar-collapsed' : ''}`}>
+      {isLibraryCollapsed ? null : (
+        <DeviceLibrary
+          categories={categories}
+          devices={deviceList}
+          onAddDevice={handleAddDevice}
+          onCreateCategory={handleCreateCategory}
+          onCreateDevice={handleCreateDevice}
+          onAddPort={handleAddPort}
+          onBulkAddPorts={handleBulkAddPorts}
+          onBulkRemovePorts={handleBulkRemovePorts}
+          onUpdateCategory={handleUpdateCategory}
+          onDeleteCategory={handleDeleteCategory}
+          onUpdateDevice={handleUpdateDevice}
+          onMoveDevice={handleMoveDevice}
+          onDeleteDevice={handleDeleteDevice}
+          onUpdatePort={handleUpdatePort}
+          onDeletePort={handleDeletePort}
+        />
+      )}
 
       <section className="workspace">
         <header className="workspace-header">
@@ -723,6 +745,12 @@ function App() {
             rows={2}
           />
           <div className="workspace-actions">
+            <button
+              type="button"
+              onClick={() => setIsLibraryCollapsed((current) => !current)}
+            >
+              {isLibraryCollapsed ? 'Show Library' : 'Hide Library'}
+            </button>
             <button type="button" onClick={handleExportProject}>
               Export Project
             </button>
@@ -776,6 +804,8 @@ function App() {
           onRenameNode={handleRenameNode}
           onToggleNodeCollapse={handleToggleNodeCollapse}
           onDeleteConnection={handleDeleteConnection}
+          onExpandAllNodesForExport={handleExpandAllNodesForExport}
+          onRestoreCollapsedNodes={handleRestoreCollapsedNodes}
         />
       </section>
     </div>

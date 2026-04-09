@@ -6,6 +6,10 @@
   color: #e8ebf0;
 }
 
+.app-layout.sidebar-collapsed {
+  grid-template-columns: 1fr;
+}
+
 .library-panel {
   border-right: 1px solid #2a3342;
   padding: 1rem;
@@ -157,6 +161,23 @@
   color: #c2d2ea;
 }
 
+.manager-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.manager-list-header button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.38rem;
+  cursor: pointer;
+}
+
 .manager-list > small {
   color: #8ea4c4;
 }
@@ -174,6 +195,12 @@
 
 .manager-row span {
   font-size: 0.78rem;
+}
+
+.manager-row-main {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .manager-row div {
@@ -293,10 +320,27 @@
   padding: 0.7rem 1rem;
   border-bottom: 1px solid #2a3342;
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   font-size: 0.9rem;
   color: #b3c2da;
   background: #192233;
+}
+
+.zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.zoom-controls button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  font-size: 0.74rem;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
 }
 
 .active-connection {
@@ -310,6 +354,14 @@
   background: radial-gradient(circle at 1px 1px, #3a4e6a 1px, #11141b 0);
   background-size: 24px 24px;
   overflow: auto;
+}
+
+.canvas-zoom-surface {
+  position: relative;
+}
+
+.canvas-content {
+  position: relative;
 }
 
 .connection-layer {
@@ -475,7 +527,7 @@
 }
 
 .connection-panel h3 {
-  margin: 0 0 0.4rem;
+  margin: 0;
   font-size: 0.9rem;
 }
 
@@ -484,10 +536,47 @@
   color: #9bb0ce;
 }
 
+.connection-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.connection-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.connection-panel-actions button,
+.panel-subsection-header button {
+  border-radius: 5px;
+  border: 1px solid #3a4f6f;
+  background: #2f4770;
+  color: #e8ebf0;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.38rem;
+  cursor: pointer;
+}
+
 .connection-panel hr {
   border: 0;
   border-top: 1px solid #2a3c56;
   margin: 0.55rem 0;
+}
+
+.panel-subsection {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.panel-subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
 }
 
 .legend-items,

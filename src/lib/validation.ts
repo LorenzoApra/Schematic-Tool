@@ -36,13 +36,26 @@ export function validateConnection({
     return { valid: false, error: 'Cannot connect a port to itself.' }
   }
 
-  const inputAlreadyUsed = connections.some(
-    (connection) =>
-      connection.to.nodeId === target.nodeId && connection.to.portId === target.portId,
-  )
+  const isPortAlreadyUsed = (port: PortRef) =>
+    connections.some(
+      (connection) =>
+        (connection.from.nodeId === port.nodeId &&
+          connection.from.portId === port.portId) ||
+        (connection.to.nodeId === port.nodeId && connection.to.portId === port.portId),
+    )
 
-  if (inputAlreadyUsed) {
-    return { valid: false, error: 'This input port already has a connection.' }
+  if (isPortAlreadyUsed(source)) {
+    return {
+      valid: false,
+      error: 'This source port already has a connection.',
+    }
+  }
+
+  if (isPortAlreadyUsed(target)) {
+    return {
+      valid: false,
+      error: 'This target port already has a connection.',
+    }
   }
 
   const sourcePort = resolvePort(source)

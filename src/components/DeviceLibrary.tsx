@@ -114,6 +114,8 @@ export function DeviceLibrary({
     useState<ConnectorCategory>(defaultConnectorCategory)
   const [editingPortConnectorType, setEditingPortConnectorType] =
     useState(defaultConnectorType)
+  const [isManageDevicesOpen, setIsManageDevicesOpen] = useState(true)
+  const [expandedDevices, setExpandedDevices] = useState<Record<string, boolean>>({})
 
   const hasCategories = categories.length > 0
   const hasDevices = devices.length > 0
@@ -443,8 +445,17 @@ export function DeviceLibrary({
               </div>
 
               <div className="manager-list">
-                <strong>Manage Devices And Ports</strong>
-                {sortedDevices.map((device) => (
+                <div className="manager-list-header">
+                  <strong>Manage Devices And Ports</strong>
+                  <button
+                    type="button"
+                    onClick={() => setIsManageDevicesOpen((current) => !current)}
+                  >
+                    {isManageDevicesOpen ? 'Collapse' : 'Expand'}
+                  </button>
+                </div>
+                {isManageDevicesOpen
+                  ? sortedDevices.map((device) => (
                   <div key={device.id} className="manager-device">
                     <div className="manager-row">
                       {editingDeviceId === device.id ? (
@@ -475,7 +486,20 @@ export function DeviceLibrary({
                         </div>
                       ) : (
                         <>
-                          <span>{device.name}</span>
+                          <div className="manager-row-main">
+                            <span>{device.name}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedDevices((current) => ({
+                                  ...current,
+                                  [device.id]: !(current[device.id] ?? false),
+                                }))
+                              }
+                            >
+                              {expandedDevices[device.id] ? 'Hide Ports' : 'Show Ports'}
+                            </button>
+                          </div>
                           <div>
                             <button
                               type="button"
@@ -497,7 +521,9 @@ export function DeviceLibrary({
                       )}
                     </div>
 
-                    <div className="manager-move">
+                    {expandedDevices[device.id] ? (
+                      <>
+                        <div className="manager-move">
                       <select
                         value={device.category}
                         onChange={(event) =>
@@ -511,9 +537,9 @@ export function DeviceLibrary({
                         ))}
                       </select>
                       <small>Move device to category</small>
-                    </div>
+                        </div>
 
-                    {[...device.inputs, ...device.outputs].map((port) => (
+                        {[...device.inputs, ...device.outputs].map((port) => (
                       <div
                         key={`${device.id}:${port.kind}:${port.id}`}
                         className="manager-row port-row"
@@ -623,9 +649,12 @@ export function DeviceLibrary({
                           </>
                         )}
                       </div>
-                    ))}
+                        ))}
+                      </>
+                    ) : null}
                   </div>
-                ))}
+                  ))
+                  : null}
               </div>
             </div>
           </section>
