@@ -7,6 +7,10 @@
     "dev": "vite",
     "start:all": "./scripts/start-all.sh",
     "stop:all": "./scripts/stop-all.sh",
+    "starter:macos": "./scripts/starter-macos.sh",
+    "stopper:macos": "./scripts/stopper-macos.sh",
+    "start:windows": "scripts\\start-windows.cmd",
+    "stop:windows": "scripts\\stop-windows.cmd",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
