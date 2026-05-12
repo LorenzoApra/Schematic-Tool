@@ -232,6 +232,15 @@ export const devices: DeviceDefinition[] = [
     ],
   },
 
+    {
+    id: 'monitor-19',
+    name: 'monitor 19"',
+    category: 'monitor-video',
+    inputs: [
+      port('hdmi-in', 'HDMI In', 'input', 'video', 'HDMI'),    ],
+    outputs: [],
+  },
+
   {
     id: 'monitor-24',
     name: 'monitor 24"',
