@@ -119,6 +119,43 @@
   padding: 0.55rem;
 }
 
+.manager-reset-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  background: #182131;
+  border: 1px solid #33445d;
+  border-radius: 8px;
+  padding: 0.55rem;
+}
+
+.manager-reset-panel div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.manager-reset-panel strong {
+  font-size: 0.8rem;
+  color: #c2d2ea;
+}
+
+.manager-reset-panel small {
+  color: #8ea4c4;
+  line-height: 1.35;
+}
+
+.manager-reset-panel button {
+  border-radius: 6px;
+  border: 1px solid #6a4a3e;
+  background: #3e2a25;
+  color: #f2d1cf;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
 .manager-form strong {
   font-size: 0.8rem;
   color: #c2d2ea;

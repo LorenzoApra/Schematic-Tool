@@ -61,6 +61,7 @@ interface DeviceLibraryProps {
     nextConnectorType: string,
   ) => boolean
   onDeletePort: (deviceId: string, portId: string, portKind: PortKind) => boolean
+  onResetLibraryToDefaults: () => void
 }
 
 export function DeviceLibrary({
@@ -79,6 +80,7 @@ export function DeviceLibrary({
   onDeleteDevice,
   onUpdatePort,
   onDeletePort,
+  onResetLibraryToDefaults,
 }: DeviceLibraryProps) {
   const [isManagerOpen, setIsManagerOpen] = useState(false)
   const [newCategoryLabel, setNewCategoryLabel] = useState('')
@@ -124,14 +126,26 @@ export function DeviceLibrary({
     () => [...devices].sort((a, b) => a.name.localeCompare(b.name)),
     [devices],
   )
+  const categoryIds = useMemo(
+    () => new Set(categories.map((category) => category.id)),
+    [categories],
+  )
+  const uncategorizedDevices = devices.filter(
+    (device) => !categoryIds.has(device.category),
+  )
+  const visibleCategories =
+    uncategorizedDevices.length > 0
+      ? [...categories, { id: '__uncategorized', label: 'Uncategorized' }]
+      : categories
 
   return (
     <aside className="library-panel">
       <h2>Device Library</h2>
-      {categories.map((category) => {
-        const categoryDevices = devices.filter(
-          (device) => device.category === category.id,
-        )
+      {visibleCategories.map((category) => {
+        const categoryDevices =
+          category.id === '__uncategorized'
+            ? uncategorizedDevices
+            : devices.filter((device) => device.category === category.id)
 
         return (
           <section key={category.id} className="library-category">
@@ -183,6 +197,19 @@ export function DeviceLibrary({
             </div>
 
             <div className="library-manager">
+              <div className="manager-reset-panel">
+                <div>
+                  <strong>Default Library</strong>
+                  <small>
+                    Restore the built-in AV device library. The canvas is cleared to avoid
+                    broken devices.
+                  </small>
+                </div>
+                <button type="button" onClick={onResetLibraryToDefaults}>
+                  Reset Library
+                </button>
+              </div>
+
               <form
                 className="manager-form"
                 onSubmit={(event) => {

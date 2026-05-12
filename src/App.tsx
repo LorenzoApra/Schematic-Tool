@@ -707,6 +707,20 @@ function App() {
     setMessage('Canvas cleared.')
   }
 
+  const handleResetLibraryToDefaults = () => {
+    const confirmed = window.confirm(
+      'Reset the library to the built-in defaults? This also clears the canvas.',
+    )
+    if (!confirmed) return
+
+    setCategories(deviceCategories)
+    setDeviceList(normalizeDeviceList(devices))
+    setNodes([])
+    setConnections([])
+    setActivePort(null)
+    setMessage('Default library restored.')
+  }
+
   return (
     <div className={`app-layout ${isLibraryCollapsed ? 'sidebar-collapsed' : ''}`}>
       {isLibraryCollapsed ? null : (
@@ -726,6 +740,7 @@ function App() {
           onDeleteDevice={handleDeleteDevice}
           onUpdatePort={handleUpdatePort}
           onDeletePort={handleDeletePort}
+          onResetLibraryToDefaults={handleResetLibraryToDefaults}
         />
       )}
 
