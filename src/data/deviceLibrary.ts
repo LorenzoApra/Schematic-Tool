@@ -50,6 +50,7 @@ export const deviceCategories: DeviceCategory[] = [
   { id: 'controller-ptz', label: 'Controller PTZ' },
   { id: 'sending-card', label: 'Sending Card' },
   { id: 'pa', label: 'PA' },
+  { id: 'dsp', label: 'DSP' },
   { id: 'stage-box', label: 'Stage Box' },
 
 ]
@@ -488,4 +489,37 @@ export const devices: DeviceDefinition[] = [
 
     ],
   },
+
+  {
+    id: 'DB-vio',
+    name: 'DB Vio',
+    category: 'pa',
+    inputs: [
+      port('audio-in', 'Audio In', 'input', 'audio', 'XLR'),
+      port('rdnet-in', 'RDNet In', 'input', 'audio', 'RDNet'),
+
+    ],
+    outputs: [
+      port('audio-out', 'Audio Out', 'output', 'audio', 'XLR'),
+      port('rdnet-out', 'RDNet Out', 'output', 'audio', 'RDNet'),
+
+    ],
+  },
+
+   {
+    id: 'db-control-8',
+    name: 'DB Control 8',
+    category: 'pa',
+    inputs: [
+      ...numberedPorts('RDnet In', 8, 'input', 'audio', 'RDNet'),
+
+    ],
+    outputs: [
+            port('controll', 'controll', 'bidirectional', 'network', 'ethernet'),
+
+
+    ],
+  },
+
+  
 ]

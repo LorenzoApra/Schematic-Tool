@@ -19,6 +19,7 @@ export const connectorCatalog: Record<ConnectorCategory, string[]> = {
     'AES/EBU',
     'MADI',
     'AES50',
+    'RDNet',
   ],
   network: ['Ethernet', 'Ethernet + PoE', 'SFP', 'MPO'],
   lighting: ['DMX 5p', 'DMX 3p', 'ArtNet', 'sACN'],
