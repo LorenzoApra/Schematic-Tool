@@ -381,6 +381,54 @@
   filter: drop-shadow(0 0 4px rgba(143, 198, 255, 0.5));
 }
 
+.connection-endpoint {
+  pointer-events: none;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 4px rgba(143, 198, 255, 0.45));
+}
+
+.export-color-legend {
+  position: absolute;
+  z-index: 3;
+  width: 330px;
+  border: 1px solid #3a4f6f;
+  border-radius: 8px;
+  background: rgba(20, 26, 35, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  padding: 0.7rem;
+  color: #e8ebf0;
+}
+
+.export-color-legend strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.85rem;
+  color: #d7e7ff;
+}
+
+.export-color-legend ul {
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+}
+
+.export-color-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+}
+
+.export-color-swatch {
+  width: 18px;
+  height: 5px;
+  border-radius: 999px;
+  box-shadow: 0 0 6px currentColor;
+  flex: 0 0 auto;
+}
+
 .device-node {
   position: absolute;
   z-index: 2;
