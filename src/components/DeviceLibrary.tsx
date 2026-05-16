@@ -83,6 +83,8 @@ export function DeviceLibrary({
   onResetLibraryToDefaults,
 }: DeviceLibraryProps) {
   const [isManagerOpen, setIsManagerOpen] = useState(false)
+  const [librarySearch, setLibrarySearch] = useState('')
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
   const [newCategoryLabel, setNewCategoryLabel] = useState('')
   const [newDeviceName, setNewDeviceName] = useState('')
   const [newDeviceCategory, setNewDeviceCategory] = useState('')
@@ -137,37 +139,113 @@ export function DeviceLibrary({
     uncategorizedDevices.length > 0
       ? [...categories, { id: '__uncategorized', label: 'Uncategorized' }]
       : categories
+  const normalizedSearch = librarySearch.trim().toLocaleLowerCase()
+  const isSearching = normalizedSearch.length > 0
+  const visibleCategoryGroups = visibleCategories
+    .map((category) => {
+      const categoryDevices =
+        category.id === '__uncategorized'
+          ? uncategorizedDevices
+          : devices.filter((device) => device.category === category.id)
+      const categoryMatches = category.label
+        .toLocaleLowerCase()
+        .includes(normalizedSearch)
+      const matchingDevices = isSearching
+        ? categoryDevices.filter((device) => {
+            const searchableText = [
+              device.name,
+              ...device.inputs.map((port) => port.label),
+              ...device.outputs.map((port) => port.label),
+              ...device.inputs.map((port) => port.connectorType),
+              ...device.outputs.map((port) => port.connectorType),
+            ]
+              .join(' ')
+              .toLocaleLowerCase()
+
+            return categoryMatches || searchableText.includes(normalizedSearch)
+          })
+        : categoryDevices
+
+      return {
+        category,
+        devices: matchingDevices,
+        totalDevices: categoryDevices.length,
+      }
+    })
+    .filter(({ category, devices }) => {
+      if (!isSearching) return true
+      return (
+        category.label.toLocaleLowerCase().includes(normalizedSearch) ||
+        devices.length > 0
+      )
+    })
+  const hasSearchResults = visibleCategoryGroups.some(
+    ({ devices }) => devices.length > 0,
+  )
 
   return (
     <aside className="library-panel">
       <h2>Device Library</h2>
-      {visibleCategories.map((category) => {
-        const categoryDevices =
-          category.id === '__uncategorized'
-            ? uncategorizedDevices
-            : devices.filter((device) => device.category === category.id)
-
+      <div className="library-search">
+        <input
+          value={librarySearch}
+          onChange={(event) => setLibrarySearch(event.target.value)}
+          placeholder="Search devices, ports, connectors"
+          aria-label="Search device library"
+        />
+        {librarySearch ? (
+          <button type="button" onClick={() => setLibrarySearch('')}>
+            Clear
+          </button>
+        ) : null}
+      </div>
+      {visibleCategoryGroups.map(({ category, devices: categoryDevices, totalDevices }) => {
+        const isExpanded = isSearching || (expandedCategories[category.id] ?? false)
         return (
           <section key={category.id} className="library-category">
-            <h3>{category.label}</h3>
-            <div className="library-grid">
-              {categoryDevices.map((device) => (
-                <button
-                  key={device.id}
-                  type="button"
-                  className="library-device"
-                  onClick={() => onAddDevice(device.id)}
-                >
-                  <span>{device.name}</span>
-                  <small>
-                    In {device.inputs.length} / Out {device.outputs.length}
-                  </small>
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              className="library-category-toggle"
+              disabled={isSearching}
+              onClick={() =>
+                setExpandedCategories((current) => ({
+                  ...current,
+                  [category.id]: !(current[category.id] ?? false),
+                }))
+              }
+              aria-expanded={isExpanded}
+            >
+              <span>{isExpanded ? '-' : '+'}</span>
+              <strong>{category.label}</strong>
+              <small>
+                {isSearching
+                  ? `${categoryDevices.length}/${totalDevices}`
+                  : totalDevices}
+              </small>
+            </button>
+            {isExpanded ? (
+              <div className="library-grid">
+                {categoryDevices.map((device) => (
+                  <button
+                    key={device.id}
+                    type="button"
+                    className="library-device"
+                    onClick={() => onAddDevice(device.id)}
+                  >
+                    <span>{device.name}</span>
+                    <small>
+                      In {device.inputs.length} / Out {device.outputs.length}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </section>
         )
       })}
+      {isSearching && !hasSearchResults ? (
+        <p className="library-empty">No devices match your search.</p>
+      ) : null}
 
       <button
         type="button"

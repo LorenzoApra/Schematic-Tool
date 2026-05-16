@@ -530,5 +530,32 @@ export const devices: DeviceDefinition[] = [
     ],
   },
 
+  {
+    id: 'dl32',
+    name: 'Midas DL32',
+    category: 'stage-box',
+    inputs: [
+      ...numberedPorts('XLR In', 32, 'input', 'audio', 'XLR'),
+    ],
+    outputs: [
+      ...numberedPorts('XLR Out', 16, 'output', 'audio', 'XLR'),
+      port('AES-50-A', 'AES 50 A', 'bidirectional', 'audio', 'AES50'),
+      port('AES-50-B', 'AES 50 B', 'bidirectional', 'audio', 'AES50'),
+    ],
+  },
+
+  /*{
+    id: 'prodigy-mp',
+    name: 'DirectOut Prodigy MP',
+    category: 'dsp',
+    inputs: [
+      ...numberedPorts('XLR In', 32, 'input', 'audio', 'XLR'),
+    ],
+    outputs: [
+      ...numberedPorts('XLR Out', 16, 'output', 'audio', 'XLR'),
+      port('AES-50-A', 'AES 50 A', 'bidirectional', 'audio', 'AES50'),
+      port('AES-50-B', 'AES 50 B', 'bidirectional', 'audio', 'AES50'),
+    ],
+  },*/
   
 ]
