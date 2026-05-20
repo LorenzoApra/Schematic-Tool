@@ -91,7 +91,7 @@ export const devices: DeviceDefinition[] = [
       ...numberedPorts('SDI Out', 12, 'output', 'video', 'SDI'),
       ...numberedPorts('Monitor Out', 2, 'output', 'video', 'HDMI'),
       ...numberedPorts('BD Out', 3, 'output', 'video', 'SDI'),
-      ...numberedPorts('BD out', 4, 'input', 'video', 'HDMI'),
+      ...numberedPorts('BD Out', 4, 'output', 'video', 'HDMI'),
       ...numberedPorts('Opt Out', 4, 'output', 'video', 'SDI'),
       ...numberedPorts('Optical', 4, 'bidirectional', 'video', 'Optical Video'),
       port('controllo', 'LAN Control', 'bidirectional', 'network', 'Ethernet'),
