@@ -125,8 +125,8 @@ export const devices: DeviceDefinition[] = [
     name: 'BMD Optical Converter',
     category: 'convertitori-video',
     inputs: [
-      port('optica-in', 'Optical In', 'input', 'video', 'Optical Video'),
       port('sdi-in', 'SDI In', 'input', 'video', 'SDI'),
+      port('optica-in', 'Optical In', 'input', 'video', 'Optical Video'),
     ],
     outputs: [
       port('sdi-out', 'SDI Out', 'output', 'video', 'SDI'),
