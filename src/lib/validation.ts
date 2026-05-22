@@ -32,7 +32,11 @@ export function validateConnection({
     }
   }
 
-  if (source.nodeId === target.nodeId && source.portId === target.portId) {
+  if (
+    source.nodeId === target.nodeId &&
+    source.portId === target.portId &&
+    source.kind === target.kind
+  ) {
     return { valid: false, error: 'Cannot connect a port to itself.' }
   }
 
@@ -40,8 +44,11 @@ export function validateConnection({
     connections.some(
       (connection) =>
         (connection.from.nodeId === port.nodeId &&
-          connection.from.portId === port.portId) ||
-        (connection.to.nodeId === port.nodeId && connection.to.portId === port.portId),
+          connection.from.portId === port.portId &&
+          connection.from.kind === port.kind) ||
+        (connection.to.nodeId === port.nodeId &&
+          connection.to.portId === port.portId &&
+          connection.to.kind === port.kind),
     )
 
   if (isPortAlreadyUsed(source)) {

@@ -27,6 +27,7 @@ function toSlug(value: string): string {
 }
 
 const STORAGE_KEY = 'live-show-schematic-state-v1'
+const CONSTELLATION_DEVICE_ID = 'tebe-constellation-2me'
 
 interface PersistedState {
   projectTitle: string
@@ -47,16 +48,116 @@ interface ProjectExport {
 function normalizeDeviceList(deviceList: DeviceDefinition[]): DeviceDefinition[] {
   return deviceList.map((device) => ({
     ...device,
-    inputs: device.inputs.map((port) => ({
+    inputs: normalizeConstellationPorts(
+      device,
+      device.inputs.map((port) => ({
+        ...port,
+        connectorCategory: port.connectorCategory ?? defaultConnectorCategory,
+        connectorType: port.connectorType ?? defaultConnectorType,
+      })),
+    ),
+    outputs: normalizeConstellationPorts(
+      device,
+      device.outputs.map((port) => ({
+        ...port,
+        connectorCategory: port.connectorCategory ?? defaultConnectorCategory,
+        connectorType: port.connectorType ?? defaultConnectorType,
+      })),
+    ),
+  }))
+}
+
+function normalizeConstellationPorts(
+  device: DeviceDefinition,
+  ports: DeviceDefinition['inputs'],
+) {
+  if (device.id !== CONSTELLATION_DEVICE_ID) return ports
+
+  return ports.map((port) => {
+    const legacyMatch = port.id.match(/^(bd-in|bd-out)-([1-4])$/)
+    if (!legacyMatch) return port
+
+    const [, baseId, number] = legacyMatch
+    const connectorSuffix = port.connectorType.toLowerCase()
+
+    return {
       ...port,
-      connectorCategory: port.connectorCategory ?? defaultConnectorCategory,
-      connectorType: port.connectorType ?? defaultConnectorType,
-    })),
-    outputs: device.outputs.map((port) => ({
-      ...port,
-      connectorCategory: port.connectorCategory ?? defaultConnectorCategory,
-      connectorType: port.connectorType ?? defaultConnectorType,
-    })),
+      id: `${baseId}-${connectorSuffix}-${number}`,
+    }
+  })
+}
+
+function getPortConnectorType(
+  port: PortRef,
+  nodes: NodeInstance[],
+  deviceList: DeviceDefinition[],
+) {
+  const node = nodes.find((entry) => entry.id === port.nodeId)
+  if (!node) return null
+  const device = deviceList.find((entry) => entry.id === node.deviceId)
+  if (!device) return null
+  const ports =
+    port.kind === 'input'
+      ? device.inputs
+      : port.kind === 'output'
+        ? device.outputs
+        : [...device.inputs, ...device.outputs]
+  return ports.find((entry) => entry.id === port.portId)?.connectorType ?? null
+}
+
+function normalizeConstellationConnectionRef(
+  port: PortRef,
+  oppositePort: PortRef,
+  nodes: NodeInstance[],
+  deviceList: DeviceDefinition[],
+): PortRef {
+  const node = nodes.find((entry) => entry.id === port.nodeId)
+  if (node?.deviceId !== CONSTELLATION_DEVICE_ID) return port
+
+  const legacyMatch = port.portId.match(/^(bd-in|bd-out)-([1-4])$/)
+  if (!legacyMatch) return port
+
+  const [, baseId, number] = legacyMatch
+  const oppositeConnector = getPortConnectorType(oppositePort, nodes, deviceList)
+  const connectorSuffix = oppositeConnector === 'HDMI' ? 'hdmi' : 'sdi'
+  const candidatePortId = `${baseId}-${connectorSuffix}-${number}`
+  const device = deviceList.find((entry) => entry.id === node.deviceId)
+  const ports =
+    port.kind === 'input'
+      ? device?.inputs
+      : port.kind === 'output'
+        ? device?.outputs
+        : [...(device?.inputs ?? []), ...(device?.outputs ?? [])]
+
+  if (ports?.some((entry) => entry.id === candidatePortId)) {
+    return { ...port, portId: candidatePortId }
+  }
+
+  const fallbackPort = ports?.find(
+    (entry) => entry.id.startsWith(`${baseId}-`) && entry.id.endsWith(`-${number}`),
+  )
+  return fallbackPort ? { ...port, portId: fallbackPort.id } : port
+}
+
+function normalizeConnections(
+  connections: Connection[],
+  nodes: NodeInstance[],
+  deviceList: DeviceDefinition[],
+) {
+  return connections.map((connection) => ({
+    ...connection,
+    from: normalizeConstellationConnectionRef(
+      connection.from,
+      connection.to,
+      nodes,
+      deviceList,
+    ),
+    to: normalizeConstellationConnectionRef(
+      connection.to,
+      connection.from,
+      nodes,
+      deviceList,
+    ),
   }))
 }
 
@@ -88,6 +189,16 @@ function loadInitialState(): PersistedState {
     }
 
     const parsed = JSON.parse(raw) as Partial<PersistedState>
+    const deviceList = normalizeDeviceList(
+      Array.isArray(parsed.deviceList) ? parsed.deviceList : devices,
+    )
+    const nodes = Array.isArray(parsed.nodes) ? parsed.nodes : []
+    const connections = normalizeConnections(
+      Array.isArray(parsed.connections) ? parsed.connections : [],
+      nodes,
+      deviceList,
+    )
+
     return {
       projectTitle:
         typeof parsed.projectTitle === 'string' && parsed.projectTitle.trim()
@@ -102,11 +213,9 @@ function loadInitialState(): PersistedState {
         Array.isArray(parsed.categories) && parsed.categories.length > 0
           ? parsed.categories
           : deviceCategories,
-      deviceList: normalizeDeviceList(
-        Array.isArray(parsed.deviceList) ? parsed.deviceList : devices,
-      ),
-      nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
-      connections: Array.isArray(parsed.connections) ? parsed.connections : [],
+      deviceList,
+      nodes,
+      connections,
     }
   } catch {
     return {
@@ -637,6 +746,14 @@ function App() {
       return null
     }
 
+    const deviceList = normalizeDeviceList(devicesValue as DeviceDefinition[])
+    const nodes = nodesValue as NodeInstance[]
+    const connections = normalizeConnections(
+      connectionsValue as Connection[],
+      nodes,
+      deviceList,
+    )
+
     return {
       projectTitle:
         typeof maybeState.projectTitle === 'string' && maybeState.projectTitle.trim()
@@ -648,9 +765,9 @@ function App() {
           ? maybeState.projectDescription.trim()
           : 'Build your routing map by placing devices and linking compatible ports.',
       categories: categoriesValue as DeviceCategory[],
-      deviceList: normalizeDeviceList(devicesValue as DeviceDefinition[]),
-      nodes: nodesValue as NodeInstance[],
-      connections: connectionsValue as Connection[],
+      deviceList,
+      nodes,
+      connections,
     }
   }
 

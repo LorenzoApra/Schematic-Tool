@@ -481,7 +481,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 3;
 }
 
 .connection-line {
@@ -589,6 +589,16 @@
   cursor: pointer;
 }
 
+.filter-ports-button {
+  border-radius: 5px;
+  border: 1px solid #4c5f85;
+  background: #1f3048;
+  color: #d6e7ff;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
 .node-name-editor {
   display: flex;
   gap: 0.25rem;
@@ -624,16 +634,27 @@
   color: #b8c8df;
 }
 
+.ports-layout {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.7rem;
+}
+
 .ports-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
   gap: 0.7rem;
-  padding: 0.7rem;
 }
 
 .ports-col {
   display: grid;
   gap: 0.35rem;
+}
+
+.bidirectional-ports {
+  justify-self: center;
+  width: min(180px, 100%);
+  text-align: center;
 }
 
 .ports-col strong {
@@ -684,7 +705,7 @@
   border-radius: 8px;
   background: rgba(20, 26, 35, 0.94);
   padding: 0.7rem;
-  z-index: 3;
+  z-index: 4;
 }
 
 .connection-panel h3 {

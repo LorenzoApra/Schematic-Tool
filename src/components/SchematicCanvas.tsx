@@ -106,7 +106,7 @@ export function SchematicCanvas({
   const [contentSize, setContentSize] = useState({ width: 1200, height: 800 })
   const clampZoom = (value: number) => Math.min(2, Math.max(0.4, value))
 
-  const getPortPosition = (port: PortRef) => {
+  const getPortButtonRect = (port: PortRef) => {
     const stage = canvasRef.current
     if (!stage) return null
 
@@ -118,18 +118,36 @@ export function SchematicCanvas({
     const buttonRect = button.getBoundingClientRect()
 
     return {
-      x:
+      left: (buttonRect.left - stageRect.left + stage.scrollLeft) / zoom,
+      right: (buttonRect.right - stageRect.left + stage.scrollLeft) / zoom,
+      centerX:
         (buttonRect.left -
           stageRect.left +
           stage.scrollLeft +
           buttonRect.width / 2) /
         zoom,
-      y:
+      centerY:
         (buttonRect.top -
           stageRect.top +
           stage.scrollTop +
           buttonRect.height / 2) /
         zoom,
+    }
+  }
+
+  const getPortPosition = (port: PortRef, connectedPort?: PortRef): CanvasPoint | null => {
+    const buttonRect = getPortButtonRect(port)
+    if (!buttonRect) return null
+
+    const connectedPosition = connectedPort ? getPortButtonRect(connectedPort) : null
+    const buttonCenterX = buttonRect.centerX
+    const shouldUseRightEdge = connectedPosition
+      ? connectedPosition.centerX >= buttonCenterX
+      : port.kind !== 'input'
+
+    return {
+      x: shouldUseRightEdge ? buttonRect.right : buttonRect.left,
+      y: buttonRect.centerY,
     }
   }
 
@@ -176,8 +194,8 @@ export function SchematicCanvas({
 
   const connectionLayouts = connections
     .map((connection) => {
-      const from = getPortPosition(connection.from)
-      const to = getPortPosition(connection.to)
+      const from = getPortPosition(connection.from, connection.to)
+      const to = getPortPosition(connection.to, connection.from)
       if (!from || !to) return null
 
       return {

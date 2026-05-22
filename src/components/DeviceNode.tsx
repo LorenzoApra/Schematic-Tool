@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { DeviceDefinition, PortDefinition, PortRef } from '../types/schematic'
 
+type PortViewMode = 'all' | 'input' | 'output' | 'bidirectional'
+
 interface DeviceNodeProps {
   id: string
   x: number
@@ -14,6 +16,14 @@ interface DeviceNodeProps {
   onDeleteNode: (nodeId: string) => void
   onRenameNode: (nodeId: string, name: string) => void
   onToggleCollapse: (nodeId: string) => void
+}
+
+const portViewModes: PortViewMode[] = ['all', 'input', 'output', 'bidirectional']
+const portViewLabels: Record<PortViewMode, string> = {
+  all: 'All',
+  input: 'Only In',
+  output: 'Only Out',
+  bidirectional: 'Only Bi',
 }
 
 function PortButton({
@@ -69,18 +79,42 @@ export function DeviceNode({
 }: DeviceNodeProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [nextName, setNextName] = useState(displayName)
+  const [portViewMode, setPortViewMode] = useState<PortViewMode>('all')
 
   const inputPorts = device.inputs.filter((port) => port.kind === 'input')
   const outputPorts = device.outputs.filter((port) => port.kind === 'output')
   const biPorts = [...device.inputs, ...device.outputs].filter(
     (port) => port.kind === 'bidirectional',
   )
+  const availablePortViewModes =
+    biPorts.length > 0
+      ? portViewModes
+      : portViewModes.filter((mode) => mode !== 'bidirectional')
+  const effectivePortViewMode = availablePortViewModes.includes(portViewMode)
+    ? portViewMode
+    : 'all'
+  const showInputs = effectivePortViewMode === 'all' || effectivePortViewMode === 'input'
+  const showOutputs = effectivePortViewMode === 'all' || effectivePortViewMode === 'output'
+  const showBidirectional =
+    effectivePortViewMode === 'all' || effectivePortViewMode === 'bidirectional'
 
   const visibleColumns = [
-    { key: 'input', title: 'Inputs', ports: inputPorts },
-    { key: 'output', title: 'Outputs', ports: outputPorts },
-    { key: 'bidirectional', title: 'Bidirectional', ports: biPorts },
-  ].filter((column) => column.ports.length > 0)
+    showInputs ? { key: 'input', title: 'Inputs', ports: inputPorts } : null,
+    showOutputs ? { key: 'output', title: 'Outputs', ports: outputPorts } : null,
+  ].filter((column): column is { key: string; title: string; ports: PortDefinition[] } =>
+    Boolean(column && column.ports.length > 0),
+  )
+  const visibleBiPorts = showBidirectional ? biPorts : []
+  const hasVisiblePorts = visibleColumns.length > 0 || visibleBiPorts.length > 0
+  const nextPortViewMode = () => {
+    const currentIndex = availablePortViewModes.indexOf(effectivePortViewMode)
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0
+    return availablePortViewModes[(safeIndex + 1) % availablePortViewModes.length]
+  }
+  const cyclePortViewMode = () => {
+    setPortViewMode(nextPortViewMode())
+  }
+  const nextPortViewLabel = portViewLabels[nextPortViewMode()]
 
   return (
     <article
@@ -138,6 +172,14 @@ export function DeviceNode({
         </button>
         <button
           type="button"
+          className="filter-ports-button node-action-button"
+          onClick={cyclePortViewMode}
+          title={`Switch to ${nextPortViewLabel}`}
+        >
+          {portViewLabels[effectivePortViewMode]}
+        </button>
+        <button
+          type="button"
           className="delete-node-button node-action-button"
           onClick={() => onDeleteNode(id)}
         >
@@ -151,26 +193,48 @@ export function DeviceNode({
           {biPorts.length}
         </div>
       ) : (
-        <div className="ports-row">
-          {visibleColumns.length === 0 ? (
+        <div className="ports-layout">
+          {!hasVisiblePorts ? (
             <div className="ports-col">
-              <small>No ports configured</small>
+              <small>
+                {effectivePortViewMode === 'all'
+                  ? 'No ports configured'
+                  : 'No ports in this view'}
+              </small>
             </div>
           ) : (
-            visibleColumns.map((column) => (
-              <div className="ports-col" key={column.key}>
-                <strong>{column.title}</strong>
-                {column.ports.map((port) => (
-                <PortButton
-                  key={port.id}
-                  nodeId={id}
-                  port={port}
-                  activePort={activePort}
-                  onPortClick={onPortClick}
-                />
+            <>
+              <div className="ports-row">
+                {visibleColumns.map((column) => (
+                  <div className="ports-col" key={column.key}>
+                    <strong>{column.title}</strong>
+                    {column.ports.map((port) => (
+                      <PortButton
+                        key={port.id}
+                        nodeId={id}
+                        port={port}
+                        activePort={activePort}
+                        onPortClick={onPortClick}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))
+              {visibleBiPorts.length > 0 ? (
+                <div className="ports-col bidirectional-ports">
+                  <strong>Bidirectional</strong>
+                  {visibleBiPorts.map((port) => (
+                    <PortButton
+                      key={port.id}
+                      nodeId={id}
+                      port={port}
+                      activePort={activePort}
+                      onPortClick={onPortClick}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       )}

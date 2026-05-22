@@ -36,6 +36,26 @@ function numberedPorts(
   })
 }
 
+function numberedPortsWithIdPrefix(
+  idPrefix: string,
+  labelPrefix: string,
+  count: number,
+  kind: PortKind,
+  connectorCategory: ConnectorCategory,
+  connectorType: string,
+): PortDefinition[] {
+  return Array.from({ length: count }, (_, index) => {
+    const number = index + 1
+    return port(
+      `${idPrefix}-${number}`,
+      `${labelPrefix} ${number}`,
+      kind,
+      connectorCategory,
+      connectorType,
+    )
+  })
+}
+
 export const deviceCategories: DeviceCategory[] = [
   { id: 'telecamere', label: 'Telecamere' },
   { id: 'switch-camere', label: 'Switch Camere' },
@@ -63,7 +83,7 @@ export const devices: DeviceDefinition[] = [
     outputs: [
       port('sdi-out', 'SDI Out', 'output', 'video', 'SDI'),
       port('hdmi-out', 'HDMI Out', 'output', 'video', 'HDMI'),
-      port('lan', 'LAN + PoE', 'bidirectional', 'network', 'Ethernet + PoE'),
+      port('lan', 'LAN', 'bidirectional', 'network', 'Ethernet'),
     ],
   },
     {
@@ -73,7 +93,7 @@ export const devices: DeviceDefinition[] = [
     inputs: [],
     outputs: [
       port('hdmi-out', 'HDMI Out', 'output', 'video', 'HDMI'),
-      port('lan', 'LAN + PoE', 'bidirectional', 'network', 'Ethernet + PoE'),
+      port('lan', 'LAN', 'bidirectional', 'network', 'Ethernet'),
     ],
   },
   {
@@ -82,18 +102,20 @@ export const devices: DeviceDefinition[] = [
     category: 'switch-camere',
     inputs: [
       ...numberedPorts('SDI In', 16, 'input', 'video', 'SDI'),
-      ...numberedPorts('BD In', 4, 'input', 'video', 'SDI'),
-      ...numberedPorts('BD In', 3, 'input', 'video', 'HDMI'),
+      ...numberedPortsWithIdPrefix('bd-in-sdi', 'BD In', 4, 'input', 'video', 'SDI'),
+      ...numberedPortsWithIdPrefix('bd-in-hdmi', 'BD In', 3, 'input', 'video', 'HDMI'),
       ...numberedPorts('Opt In', 4, 'input', 'video', 'SDI'),
+      ...numberedPorts('Optical', 4, 'input', 'video', 'Optical Video'),
+
       
     ],
     outputs: [
       ...numberedPorts('SDI Out', 12, 'output', 'video', 'SDI'),
       ...numberedPorts('Monitor Out', 2, 'output', 'video', 'HDMI'),
-      ...numberedPorts('BD Out', 3, 'output', 'video', 'SDI'),
-      ...numberedPorts('BD Out', 4, 'output', 'video', 'HDMI'),
+      ...numberedPortsWithIdPrefix('bd-out-sdi', 'BD Out', 3, 'output', 'video', 'SDI'),
+      ...numberedPortsWithIdPrefix('bd-out-hdmi', 'BD Out', 4, 'output', 'video', 'HDMI'),
       ...numberedPorts('Opt Out', 4, 'output', 'video', 'SDI'),
-      ...numberedPorts('Optical', 4, 'bidirectional', 'video', 'Optical Video'),
+      ...numberedPorts('Optical', 4, 'output', 'video', 'Optical Video'),
       port('controllo', 'LAN Control', 'bidirectional', 'network', 'Ethernet'),
       port('network', 'Network', 'bidirectional', 'network', 'Ethernet'),
     ],
@@ -103,11 +125,13 @@ export const devices: DeviceDefinition[] = [
     name: 'BMD Optical Converter',
     category: 'convertitori-video',
     inputs: [
-      port('optical', 'Optical', 'bidirectional', 'video', 'Optical Video'),
+      port('optica-in', 'Optical In', 'input', 'video', 'Optical Video'),
       port('sdi-in', 'SDI In', 'input', 'video', 'SDI'),
     ],
     outputs: [
       port('sdi-out', 'SDI Out', 'output', 'video', 'SDI'),
+      port('optica-out', 'Optical Out', 'output', 'video', 'Optical Video'),
+
     ],
   },
   {
@@ -343,7 +367,7 @@ export const devices: DeviceDefinition[] = [
     category: 'switch-rete',
     inputs: [],
     outputs: [
-      ...numberedPorts('LAN', 24, 'bidirectional', 'network', 'Ethernet + PoE'),
+      ...numberedPorts('LAN', 24, 'bidirectional', 'network', 'Ethernet'),
       ...numberedPorts('SFP', 4, 'bidirectional', 'network', 'SFP'),
     ],
   },
@@ -354,7 +378,7 @@ export const devices: DeviceDefinition[] = [
     category: 'switch-rete',
     inputs: [],
     outputs: [
-      ...numberedPorts('LAN', 8, 'bidirectional', 'network', 'Ethernet + PoE'),
+      ...numberedPorts('LAN', 8, 'bidirectional', 'network', 'Ethernet'),
       ...numberedPorts('SFP', 4, 'bidirectional', 'network', 'SFP'),
     ],
   },
@@ -365,7 +389,7 @@ export const devices: DeviceDefinition[] = [
     category: 'switch-rete',
     inputs: [],
     outputs: [
-      ...numberedPorts('LAN', 4, 'bidirectional', 'network', 'Ethernet + PoE'),
+      ...numberedPorts('LAN', 4, 'bidirectional', 'network', 'Ethernet'),
       port('Lan5', 'Lan 5', 'bidirectional', 'network', 'Ethernet'),
     ],
   },
@@ -374,7 +398,7 @@ export const devices: DeviceDefinition[] = [
     name: 'Panasonic AW-RP60',
     category: 'controller-ptz',
     inputs: [
-      port('lan', 'LAN Control', 'bidirectional', 'network', 'Ethernet + PoE'),],
+      port('lan', 'LAN Control', 'bidirectional', 'network', 'Ethernet'),],
     outputs: [],
   },
 
