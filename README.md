@@ -1,9 +1,7 @@
 # Live Show Schematic Tool
-Tool per disegnare i flussi di lavoro di regie AVL in real time
-
-Possibilità di avere una libreria custom
+Tool per disegnare flussi di segnale per regie Audio/Video/Luci di facile utilizzo
 
 
 ## Documentation
-
+Possibilità di eseguire in locale, 
 - System requirements: `docs/system-requirements.md`
