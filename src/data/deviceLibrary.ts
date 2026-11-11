@@ -237,6 +237,8 @@ export const devices: DeviceDefinition[] = [
     outputs: [
       port('hdmi-out', 'HDMI Out', 'output', 'video', 'HDMI'),
       port('usb-c', 'USB-C', 'output', 'video', 'Thunderbolt'),
+      port('Minijack', 'Minijack', 'output', 'audio', 'Minijack'),
+
     ],
   },
 
@@ -245,7 +247,10 @@ export const devices: DeviceDefinition[] = [
     name: 'PC HP 255 G8',
     category: 'pc-portatili',
     inputs: [],
-    outputs: [port('hdmi-out', 'HDMI Out', 'output', 'video', 'HDMI')],
+    outputs: [
+    port('hdmi-out', 'HDMI Out', 'output', 'video', 'HDMI'),
+    port('Minijack', 'Minijack', 'output', 'audio', 'Minijack'),
+    ],
   },
 
   {
@@ -256,6 +261,7 @@ export const devices: DeviceDefinition[] = [
     outputs: [
       port('hdmi-out', 'HDMI Out', 'output', 'video', 'HDMI'),
       port('mini-dp', 'mini DisplayPort', 'output', 'video', 'Thunderbolt'),
+      port('Minijack', 'Minijack', 'output', 'audio', 'Minijack'),
     ],
   },
 

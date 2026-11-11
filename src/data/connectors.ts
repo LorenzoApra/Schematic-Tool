@@ -20,6 +20,7 @@ export const connectorCatalog: Record<ConnectorCategory, string[]> = {
     'MADI',
     'AES50',
     'RDNet',
+    'Minijack'
   ],
   network: ['Ethernet', 'Ethernet + PoE', 'SFP', 'MPO'],
   lighting: ['DMX 5p', 'DMX 3p', 'ArtNet', 'sACN'],

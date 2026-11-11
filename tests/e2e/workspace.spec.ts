@@ -215,10 +215,11 @@ test('many devices can be arranged without overlap and routes remain interactive
   await expect(page.locator('.cable-inspector')).toBeVisible()
 })
 
-test('mobile layout, theme and dialog keyboard focus are usable', async ({
+test('mobile layout and dialog keyboard focus are usable', async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('./')
   await expect(page.locator('.library-panel')).toBeHidden()
   await page.getByRole('button', { name: 'Mostra libreria' }).click()
@@ -235,9 +236,14 @@ test('mobile layout, theme and dialog keyboard focus are usable', async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true)
-  await page.getByRole('button', { name: 'Attiva tema scuro' }).click()
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await page.screenshot({ path: info.outputPath('mobile.png') })
+  await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark')
+  await expect(
+    page.getByRole('button', { name: 'Nuovo progetto', exact: true }),
+  ).toBeVisible()
+  await page.screenshot({
+    path: info.outputPath('mobile.png'),
+    animations: 'disabled',
+  })
 })
 
 test('creating routes and editing library ports keeps connections consistent', async ({
@@ -289,3 +295,139 @@ test('creating routes and editing library ports keeps connections consistent', a
   await page.getByRole('button', { name: 'Annulla', exact: true }).click()
   await expect(page.locator('.connection-line')).toHaveCount(2)
 })
+
+test('new project requires confirmation, resets the workspace and preserves the device library', async ({
+  page,
+}) => {
+  await demo(page)
+  await page
+    .getByLabel('Titolo del progetto', { exact: true })
+    .fill('Evento live')
+  await page
+    .getByLabel('Descrizione del progetto', { exact: true })
+    .fill('Note della regia')
+  await page.getByRole('button', { name: 'Gestisci libreria' }).click()
+  await page
+    .getByRole('textbox', { name: 'Nome nuova categoria', exact: true })
+    .fill('Personale')
+  await page
+    .getByRole('button', { name: 'Crea categoria', exact: true })
+    .click()
+  await page
+    .getByRole('textbox', { name: 'Nome nuovo dispositivo', exact: true })
+    .fill('Mixer personale')
+  await page
+    .getByRole('combobox', { name: 'Categoria nuovo dispositivo', exact: true })
+    .selectOption('personale')
+  await page
+    .getByRole('button', { name: 'Crea dispositivo', exact: true })
+    .click()
+  await page.getByRole('button', { name: 'Chiudi', exact: true }).click()
+
+  const newProject = page.getByRole('button', {
+    name: 'Nuovo progetto',
+    exact: true,
+  })
+  const confirmation = page.getByRole('dialog', {
+    name: 'Creare un nuovo progetto?',
+  })
+  await newProject.click()
+  await expect(confirmation).toBeVisible()
+  await expect(page.locator('.device-node')).toHaveCount(3)
+  await confirmation
+    .getByRole('button', { name: 'Annulla', exact: true })
+    .click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(
+    page.getByLabel('Titolo del progetto', { exact: true }),
+  ).toHaveValue('Evento live')
+  await expect(page.locator('.device-node')).toHaveCount(3)
+
+  await newProject.click()
+  await page.keyboard.press('Escape')
+  await expect(confirmation).toHaveCount(0)
+  await expect(page.locator('.connection-line')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Patch list', exact: true }).click()
+  await newProject.click()
+  await confirmation
+    .getByRole('button', { name: 'Crea nuovo progetto', exact: true })
+    .click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(
+    page.getByLabel('Titolo del progetto', { exact: true }),
+  ).toHaveValue('Progetto senza titolo')
+  await expect(
+    page.getByLabel('Descrizione del progetto', { exact: true }),
+  ).toHaveValue('')
+  await expect(page.locator('.device-node')).toHaveCount(0)
+  await expect(page.locator('.connection-line')).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Esplora uno schema di esempio' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Schema', exact: true }),
+  ).toHaveAttribute('aria-current', 'page')
+
+  await page.getByRole('button', { name: 'Annulla', exact: true }).click()
+  await expect(
+    page.getByLabel('Titolo del progetto', { exact: true }),
+  ).toHaveValue('Evento live')
+  await expect(
+    page.getByLabel('Descrizione del progetto', { exact: true }),
+  ).toHaveValue('Note della regia')
+  await expect(page.locator('.device-node')).toHaveCount(3)
+  await expect(page.locator('.connection-line')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Ripristina', exact: true }).click()
+  await expect(page.locator('.device-node')).toHaveCount(0)
+  await expect(
+    page.getByText('Salvato su questo browser', { exact: true }),
+  ).toBeVisible()
+  await page.reload()
+  await expect(
+    page.getByLabel('Titolo del progetto', { exact: true }),
+  ).toHaveValue('Progetto senza titolo')
+  await expect(page.locator('.device-node')).toHaveCount(0)
+  await page
+    .getByRole('textbox', { name: 'Cerca nella libreria', exact: true })
+    .fill('Mixer personale')
+  await expect(
+    page.getByRole('button', { name: /Mixer personale/ }),
+  ).toBeVisible()
+})
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`theme follows the device from ${scheme} and updates without reloading`, async ({
+    page,
+  }) => {
+    const other = scheme === 'dark' ? 'light' : 'dark'
+    await page.emulateMedia({ colorScheme: scheme })
+    await page.addInitScript(
+      (value) => localStorage.setItem('schematic-theme', value),
+      other,
+    )
+    await page.goto('./')
+    const background = { light: 'rgb(247, 248, 250)', dark: 'rgb(19, 25, 35)' }
+    await expect(page.locator('html')).toHaveCSS('color-scheme', scheme)
+    await expect(page.locator('html')).toHaveCSS(
+      'background-color',
+      background[scheme],
+    )
+    await page.emulateMedia({ colorScheme: other })
+    await expect(page.locator('html')).toHaveCSS('color-scheme', other)
+    await expect(page.locator('html')).toHaveCSS(
+      'background-color',
+      background[other],
+    )
+    await expect(page.locator('.canvas-empty .primary')).toHaveCSS(
+      'color',
+      other === 'dark' ? 'rgb(17, 53, 46)' : 'rgb(255, 255, 255)',
+    )
+    await page.emulateMedia({ colorScheme: scheme })
+    await expect(page.locator('html')).toHaveCSS('color-scheme', scheme)
+    await page.reload()
+    await expect(page.locator('html')).toHaveCSS(
+      'background-color',
+      background[scheme],
+    )
+  })
+}

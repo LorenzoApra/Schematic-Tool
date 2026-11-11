@@ -10,6 +10,7 @@ import { connectorCatalog } from '../data/connectors'
 import { useProject } from './useProject'
 import {
   cleanConnections,
+  createDefaultProject,
   createId,
   estimateNodeHeight,
   parseProject,
@@ -45,30 +46,15 @@ export function useProjectEditor() {
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [showClear, setShowClear] = useState(false)
+  const [showNewProject, setShowNewProject] = useState(false)
+  const [projectSession, setProjectSession] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem('schematic-theme') === 'dark'
-        ? 'dark'
-        : 'light'
-    } catch {
-      return 'light'
-    }
-  })
   const importInputRef = useRef<HTMLInputElement>(null)
   const devicesById = useMemo(
     () => Object.fromEntries(deviceList.map((device) => [device.id, device])),
     [deviceList],
   )
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    try {
-      localStorage.setItem('schematic-theme', theme)
-    } catch {
-      /* Theme still works without storage. */
-    }
-  }, [theme])
   useEffect(() => {
     if (!message) return
     const timer = window.setTimeout(() => setMessage(''), 5500)
@@ -78,6 +64,21 @@ export function useProjectEditor() {
   const notify = (text: string) => {
     setMessage(text)
     return false
+  }
+  const handleNewProject = () => {
+    const blank = createDefaultProject()
+    update((current) => ({
+      ...blank,
+      categories: current.categories,
+      deviceList: current.deviceList,
+    }))
+    setActivePort(null)
+    setSelectedNode(null)
+    setShowNewProject(false)
+    setProjectSession((current) => current + 1)
+    setMessage(
+      'Nuovo progetto creato. Puoi annullare per recuperare il precedente.',
+    )
   }
   const handleDeleteNode = (id: string) => {
     update((current) => ({
@@ -594,10 +595,12 @@ export function useProjectEditor() {
     setMessage,
     showClear,
     setShowClear,
+    showNewProject,
+    setShowNewProject,
+    projectSession,
+    handleNewProject,
     showHelp,
     setShowHelp,
-    theme,
-    setTheme,
     importInputRef,
     devicesById,
     notify,

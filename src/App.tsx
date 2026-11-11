@@ -32,10 +32,12 @@ function App() {
     setMessage,
     showClear,
     setShowClear,
+    showNewProject,
+    setShowNewProject,
+    projectSession,
+    handleNewProject,
     showHelp,
     setShowHelp,
-    theme,
-    setTheme,
     importInputRef,
     devicesById,
     notify,
@@ -93,17 +95,16 @@ function App() {
           >
             <Icon name="help" />
           </button>
+          <span className="action-divider" />
           <button
             type="button"
-            className="icon-button theme-toggle"
-            aria-label={
-              theme === 'light' ? 'Attiva tema scuro' : 'Attiva tema chiaro'
-            }
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            aria-label="Nuovo progetto"
+            title="Nuovo progetto"
+            onClick={() => setShowNewProject(true)}
           >
-            <Icon name={theme === 'light' ? 'moon' : 'sun'} />
+            <Icon name="plus" />
+            <span>Nuovo progetto</span>
           </button>
-          <span className="action-divider" />
           <button type="button" onClick={() => importInputRef.current?.click()}>
             <Icon name="upload" />
             <span>Apri progetto</span>
@@ -243,6 +244,7 @@ function App() {
           </div>
         </header>
         <SchematicCanvas
+          key={projectSession}
           nodes={nodes}
           devicesById={devicesById}
           connections={connections}
@@ -357,6 +359,33 @@ function App() {
               }}
             >
               Svuota schema
+            </button>
+          </div>
+        </Modal>
+      )}
+      {showNewProject && (
+        <Modal
+          title="Creare un nuovo progetto?"
+          onClose={() => setShowNewProject(false)}
+        >
+          <p>
+            Vuoi ripartire da zero? Lo schema, il titolo e la descrizione
+            verranno azzerati. La libreria dei dispositivi resta disponibile.
+          </p>
+          <p>
+            Esporta il progetto corrente se vuoi conservarne una copia. Potrai
+            anche annullare l’operazione per recuperarlo.
+          </p>
+          <div className="modal-actions">
+            <button type="button" onClick={() => setShowNewProject(false)}>
+              Annulla
+            </button>
+            <button
+              type="button"
+              className="primary"
+              onClick={handleNewProject}
+            >
+              Crea nuovo progetto
             </button>
           </div>
         </Modal>

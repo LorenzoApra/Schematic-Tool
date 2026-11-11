@@ -39,8 +39,10 @@
 .app-layout button.primary:hover:not(:disabled) {
   background: var(--accent-hover);
 }
-:root[data-theme='dark'] .app-layout button.primary {
-  color: #11352e;
+@media (prefers-color-scheme: dark) {
+  .app-layout button.primary {
+    color: #11352e;
+  }
 }
 .app-layout .icon-button {
   width: 32px;

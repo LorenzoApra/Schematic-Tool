@@ -14,7 +14,9 @@ Uno spazio di lavoro per progettare i flussi audio, video, rete e luci delle reg
 
 **I dati vengono salvati automaticamente su questo browser.** Non sono sincronizzati tra browser o computer. Esporta il progetto JSON per conservarne una copia o trasferirlo. Le importazioni e le modifiche alla libreria sono annullabili. I progetti precedenti con formato `live-show-schematic-project`, versione 1, sono compatibili; i collegamenti a porte mancanti o incompatibili vengono rimossi durante il caricamento.
 
-Il tema chiaro/scuro si seleziona dalla barra superiore. La guida nell’app riepiloga i comandi. La libreria personalizzata resta nel progetto ed è inclusa nel file JSON.
+**Nuovo progetto** nella barra superiore permette di ripartire con titolo, descrizione e schema vuoti dopo una conferma. La libreria personalizzata resta disponibile; puoi recuperare il progetto precedente con **Annulla**.
+
+Il tema chiaro/scuro segue automaticamente l’impostazione del dispositivo, anche quando cambia mentre l’app è aperta. La guida nell’app riepiloga i comandi. La libreria personalizzata resta nel progetto ed è inclusa nel file JSON.
 
 ### Scorciatoie
 
