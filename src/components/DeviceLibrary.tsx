@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { Icon } from './Icon'
+import { Modal } from './Modal'
 import {
   connectorCatalog,
   connectorCategoryLabels,
@@ -13,6 +15,8 @@ import type {
 } from '../types/schematic'
 
 interface DeviceLibraryProps {
+  hidden?: boolean
+  onClose: () => void
   categories: DeviceCategory[]
   devices: DeviceDefinition[]
   onAddDevice: (deviceId: string) => void
@@ -60,11 +64,17 @@ interface DeviceLibraryProps {
     nextConnectorCategory: ConnectorCategory,
     nextConnectorType: string,
   ) => boolean
-  onDeletePort: (deviceId: string, portId: string, portKind: PortKind) => boolean
+  onDeletePort: (
+    deviceId: string,
+    portId: string,
+    portKind: PortKind,
+  ) => boolean
   onResetLibraryToDefaults: () => void
 }
 
 export function DeviceLibrary({
+  hidden,
+  onClose,
   categories,
   devices,
   onAddDevice,
@@ -84,7 +94,9 @@ export function DeviceLibrary({
 }: DeviceLibraryProps) {
   const [isManagerOpen, setIsManagerOpen] = useState(false)
   const [librarySearch, setLibrarySearch] = useState('')
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
+  const [expandedCategories, setExpandedCategories] = useState<
+    Record<string, boolean>
+  >({ telecamere: true })
   const [newCategoryLabel, setNewCategoryLabel] = useState('')
   const [newDeviceName, setNewDeviceName] = useState('')
   const [newDeviceCategory, setNewDeviceCategory] = useState('')
@@ -99,11 +111,12 @@ export function DeviceLibrary({
   const [bulkDeviceId, setBulkDeviceId] = useState('')
   const [bulkPortKind, setBulkPortKind] = useState<PortKind>('input')
   const [bulkPrefix, setBulkPrefix] = useState('')
-  const [bulkCount, setBulkCount] = useState('16')
+  const [bulkQuantità, setBulkQuantità] = useState('16')
   const [bulkStartIndex, setBulkStartIndex] = useState('1')
   const [bulkConnectorCategory, setBulkConnectorCategory] =
     useState<ConnectorCategory>(defaultConnectorCategory)
-  const [bulkConnectorType, setBulkConnectorType] = useState(defaultConnectorType)
+  const [bulkConnectorType, setBulkConnectorType] =
+    useState(defaultConnectorType)
 
   const [editingCategoryId, setEditingCategoryId] = useState('')
   const [editingCategoryLabel, setEditingCategoryLabel] = useState('')
@@ -119,7 +132,9 @@ export function DeviceLibrary({
   const [editingPortConnectorType, setEditingPortConnectorType] =
     useState(defaultConnectorType)
   const [isManageDevicesOpen, setIsManageDevicesOpen] = useState(true)
-  const [expandedDevices, setExpandedDevices] = useState<Record<string, boolean>>({})
+  const [expandedDevices, setExpandedDevices] = useState<
+    Record<string, boolean>
+  >({})
 
   const hasCategories = categories.length > 0
   const hasDevices = devices.length > 0
@@ -137,7 +152,7 @@ export function DeviceLibrary({
   )
   const visibleCategories =
     uncategorizedDevices.length > 0
-      ? [...categories, { id: '__uncategorized', label: 'Uncategorized' }]
+      ? [...categories, { id: '__uncategorized', label: 'Senza categoria' }]
       : categories
   const normalizedSearch = librarySearch.trim().toLocaleLowerCase()
   const isSearching = normalizedSearch.length > 0
@@ -184,586 +199,698 @@ export function DeviceLibrary({
   )
 
   return (
-    <aside className="library-panel">
-      <h2>Device Library</h2>
+    <aside className="library-panel" hidden={hidden}>
+      <div className="library-heading">
+        <div>
+          <span className="eyebrow">IL TUO INVENTARIO</span>
+          <h2>Libreria dispositivi</h2>
+        </div>
+        <span className="count-badge">{devices.length}</span>
+        <button
+          type="button"
+          className="icon-button library-close"
+          onClick={onClose}
+          aria-label="Chiudi libreria"
+        >
+          <Icon name="close" size={17} />
+        </button>
+      </div>
       <div className="library-search">
+        <Icon name="search" size={17} />
         <input
           value={librarySearch}
           onChange={(event) => setLibrarySearch(event.target.value)}
-          placeholder="Search devices, ports, connectors"
-          aria-label="Search device library"
+          placeholder="Dispositivi, porte, connettori…"
+          aria-label="Cerca nella libreria"
         />
         {librarySearch ? (
-          <button type="button" onClick={() => setLibrarySearch('')}>
-            Clear
+          <button
+            type="button"
+            aria-label="Cancella ricerca"
+            onClick={() => setLibrarySearch('')}
+          >
+            <Icon name="close" size={14} />
           </button>
         ) : null}
       </div>
-      {visibleCategoryGroups.map(({ category, devices: categoryDevices, totalDevices }) => {
-        const isExpanded = isSearching || (expandedCategories[category.id] ?? false)
-        return (
-          <section key={category.id} className="library-category">
-            <button
-              type="button"
-              className="library-category-toggle"
-              disabled={isSearching}
-              onClick={() =>
-                setExpandedCategories((current) => ({
-                  ...current,
-                  [category.id]: !(current[category.id] ?? false),
-                }))
-              }
-              aria-expanded={isExpanded}
-            >
-              <span>{isExpanded ? '-' : '+'}</span>
-              <strong>{category.label}</strong>
-              <small>
-                {isSearching
-                  ? `${categoryDevices.length}/${totalDevices}`
-                  : totalDevices}
-              </small>
-            </button>
-            {isExpanded ? (
-              <div className="library-grid">
-                {categoryDevices.map((device) => (
-                  <button
-                    key={device.id}
-                    type="button"
-                    className="library-device"
-                    onClick={() => onAddDevice(device.id)}
-                  >
-                    <span>{device.name}</span>
-                    <small>
-                      In {device.inputs.length} / Out {device.outputs.length}
-                    </small>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        )
-      })}
-      {isSearching && !hasSearchResults ? (
-        <p className="library-empty">No devices match your search.</p>
-      ) : null}
-
-      <button
-        type="button"
-        className="open-manager-button"
-        onClick={() => setIsManagerOpen(true)}
-      >
-        Manage Library
-      </button>
-
-      {isManagerOpen ? (
-        <div
-          className="manager-modal-backdrop"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setIsManagerOpen(false)
-          }}
-        >
-          <section className="manager-modal">
-            <div className="manager-modal-header">
-              <h3>Library Manager</h3>
+      {visibleCategoryGroups.map(
+        ({ category, devices: categoryDevices, totalDevices }) => {
+          const isExpanded =
+            isSearching || (expandedCategories[category.id] ?? false)
+          return (
+            <section key={category.id} className="library-category">
               <button
                 type="button"
-                className="manager-close-button"
-                onClick={() => setIsManagerOpen(false)}
+                className="library-category-toggle"
+                disabled={isSearching}
+                onClick={() =>
+                  setExpandedCategories((current) => ({
+                    ...current,
+                    [category.id]: !(current[category.id] ?? false),
+                  }))
+                }
+                aria-expanded={isExpanded}
               >
-                Close
+                <span>
+                  <Icon
+                    name="chevron"
+                    size={14}
+                    style={{
+                      transform: isExpanded ? 'rotate(90deg)' : undefined,
+                    }}
+                  />
+                </span>
+                <strong>{category.label}</strong>
+                <small>
+                  {isSearching
+                    ? `${categoryDevices.length}/${totalDevices}`
+                    : totalDevices}
+                </small>
+              </button>
+              {isExpanded ? (
+                <div className="library-grid">
+                  {categoryDevices.map((device) => (
+                    <button
+                      key={device.id}
+                      type="button"
+                      className="library-device"
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData(
+                          'application/x-schematic-device',
+                          device.id,
+                        )
+                        event.dataTransfer.setData('text/plain', device.id)
+                        event.dataTransfer.effectAllowed = 'copy'
+                      }}
+                      title={`Aggiungi ${device.name} allo schema`}
+                      onClick={() => onAddDevice(device.id)}
+                    >
+                      <span className="library-device-icon">
+                        <Icon name="box" size={17} />
+                      </span>
+                      <span className="library-device-info">
+                        <strong>{device.name}</strong>
+                        <small>
+                          {
+                            [...device.inputs, ...device.outputs].filter(
+                              (p) => p.kind === 'input',
+                            ).length
+                          }{' '}
+                          in ·{' '}
+                          {
+                            [...device.inputs, ...device.outputs].filter(
+                              (p) => p.kind === 'output',
+                            ).length
+                          }{' '}
+                          out ·{' '}
+                          {
+                            [...device.inputs, ...device.outputs].filter(
+                              (p) => p.kind === 'bidirectional',
+                            ).length
+                          }{' '}
+                          bi
+                        </small>
+                      </span>
+                      <span className="add-device-icon">
+                        <Icon name="plus" size={16} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          )
+        },
+      )}
+      {isSearching && !hasSearchResults ? (
+        <p className="library-empty">
+          Nessun dispositivo corrisponde alla ricerca.
+        </p>
+      ) : null}
+
+      <div className="library-footer">
+        <p>
+          Fai clic per aggiungere.
+          <br />
+          Trascina per scegliere la posizione.
+        </p>
+        <button
+          type="button"
+          className="open-manager-button"
+          onClick={() => setIsManagerOpen(true)}
+        >
+          <Icon name="settings" size={17} /> Gestisci libreria
+        </button>
+      </div>
+
+      {isManagerOpen ? (
+        <Modal
+          title="Gestisci libreria"
+          onClose={() => setIsManagerOpen(false)}
+          wide
+        >
+          <div className="library-manager">
+            <div className="manager-reset-panel">
+              <div>
+                <strong>Libreria iniziale</strong>
+                <small>
+                  Ripristina i dispositivi iniziali e svuota lo schema. Puoi
+                  annullare l’operazione.
+                </small>
+              </div>
+              <button type="button" onClick={onResetLibraryToDefaults}>
+                Ripristina libreria
               </button>
             </div>
 
-            <div className="library-manager">
-              <div className="manager-reset-panel">
-                <div>
-                  <strong>Default Library</strong>
-                  <small>
-                    Restore the built-in AV device library. The canvas is cleared to avoid
-                    broken devices.
-                  </small>
-                </div>
-                <button type="button" onClick={onResetLibraryToDefaults}>
-                  Reset Library
-                </button>
-              </div>
+            <form
+              className="manager-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                if (onCreateCategory(newCategoryLabel)) setNewCategoryLabel('')
+              }}
+            >
+              <strong>Nuova categoria</strong>
+              <input
+                aria-label="Nome nuova categoria"
+                value={newCategoryLabel}
+                onChange={(event) => setNewCategoryLabel(event.target.value)}
+                placeholder="Nome categoria"
+              />
+              <button type="submit">Crea categoria</button>
+            </form>
 
-              <form
-                className="manager-form"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  if (onCreateCategory(newCategoryLabel)) setNewCategoryLabel('')
+            <form
+              className="manager-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                if (onCreateDevice(newDeviceName, newDeviceCategory))
+                  setNewDeviceName('')
+              }}
+            >
+              <strong>Nuovo dispositivo</strong>
+              <input
+                aria-label="Nome nuovo dispositivo"
+                value={newDeviceName}
+                onChange={(event) => setNewDeviceName(event.target.value)}
+                placeholder="Nome dispositivo"
+              />
+              <select
+                aria-label="Categoria nuovo dispositivo"
+                value={newDeviceCategory}
+                onChange={(event) => setNewDeviceCategory(event.target.value)}
+                disabled={!hasCategories}
+              >
+                <option value="">Scegli categoria</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+              <button type="submit" disabled={!hasCategories}>
+                Crea dispositivo
+              </button>
+            </form>
+
+            <form
+              className="manager-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                if (
+                  onAddPort(
+                    portDeviceId,
+                    portKind,
+                    portLabel,
+                    portConnectorCategory,
+                    portConnectorType,
+                  )
+                ) {
+                  setPortLabel('')
+                }
+              }}
+            >
+              <strong>Nuova porta</strong>
+              <select
+                aria-label="Dispositivo per la nuova porta"
+                value={portDeviceId}
+                onChange={(event) => setPortDeviceId(event.target.value)}
+                disabled={!hasDevices}
+              >
+                <option value="">Scegli dispositivo</option>
+                {sortedDevices.map((device) => (
+                  <option key={device.id} value={device.id}>
+                    {device.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Direzione nuova porta"
+                value={portKind}
+                onChange={(event) =>
+                  setPortKind(event.target.value as PortKind)
+                }
+              >
+                <option value="input">Ingresso</option>
+                <option value="output">Uscita</option>
+                <option value="bidirectional">Bidirezionale</option>
+              </select>
+              <input
+                aria-label="Nome nuova porta"
+                value={portLabel}
+                onChange={(event) => setPortLabel(event.target.value)}
+                placeholder="Nome porta"
+              />
+              <select
+                aria-label="Categoria connettore"
+                value={portConnectorCategory}
+                onChange={(event) => {
+                  const next = event.target.value as ConnectorCategory
+                  setPortConnectorCategory(next)
+                  setPortConnectorType(connectorCatalog[next][0])
                 }}
               >
-                <strong>Add Category</strong>
-                <input
-                  value={newCategoryLabel}
-                  onChange={(event) => setNewCategoryLabel(event.target.value)}
-                  placeholder="Category name"
-                />
-                <button type="submit">Create Category</button>
-              </form>
+                {Object.entries(connectorCategoryLabels).map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Tipo connettore"
+                value={portConnectorType}
+                onChange={(event) => setPortConnectorType(event.target.value)}
+              >
+                {connectorCatalog[portConnectorCategory].map((connector) => (
+                  <option key={connector} value={connector}>
+                    {connector}
+                  </option>
+                ))}
+              </select>
+              <button type="submit" disabled={!hasDevices}>
+                Aggiungi porta
+              </button>
+            </form>
 
-              <form
-                className="manager-form"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  if (onCreateDevice(newDeviceName, newDeviceCategory)) setNewDeviceName('')
+            <form
+              className="manager-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                onBulkAddPorts(
+                  bulkDeviceId,
+                  bulkPortKind,
+                  bulkPrefix,
+                  Number.parseInt(bulkQuantità, 10),
+                  Number.parseInt(bulkStartIndex, 10),
+                  bulkConnectorCategory,
+                  bulkConnectorType,
+                )
+              }}
+            >
+              <strong>Porte in serie</strong>
+              <select
+                aria-label="Dispositivo per le porte in serie"
+                value={bulkDeviceId}
+                onChange={(event) => setBulkDeviceId(event.target.value)}
+                disabled={!hasDevices}
+              >
+                <option value="">Scegli dispositivo</option>
+                {sortedDevices.map((device) => (
+                  <option key={device.id} value={device.id}>
+                    {device.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Direzione porte in serie"
+                value={bulkPortKind}
+                onChange={(event) =>
+                  setBulkPortKind(event.target.value as PortKind)
+                }
+              >
+                <option value="input">Ingresso</option>
+                <option value="output">Uscita</option>
+                <option value="bidirectional">Bidirezionale</option>
+              </select>
+              <input
+                aria-label="Prefisso porte in serie"
+                value={bulkPrefix}
+                onChange={(event) => setBulkPrefix(event.target.value)}
+                placeholder="Prefisso (es. SDI In)"
+              />
+              <input
+                value={bulkQuantità}
+                onChange={(event) => setBulkQuantità(event.target.value)}
+                placeholder="Quantità"
+                type="number"
+                min="1"
+                max="256"
+              />
+              <input
+                aria-label="Numero iniziale"
+                value={bulkStartIndex}
+                onChange={(event) => setBulkStartIndex(event.target.value)}
+                placeholder="Numero iniziale"
+                type="number"
+                min="0"
+                max="10000"
+              />
+              <select
+                aria-label="Categoria connettore porte in serie"
+                value={bulkConnectorCategory}
+                onChange={(event) => {
+                  const next = event.target.value as ConnectorCategory
+                  setBulkConnectorCategory(next)
+                  setBulkConnectorType(connectorCatalog[next][0])
                 }}
               >
-                <strong>Add Device</strong>
-                <input
-                  value={newDeviceName}
-                  onChange={(event) => setNewDeviceName(event.target.value)}
-                  placeholder="Device name"
-                />
-                <select
-                  value={newDeviceCategory}
-                  onChange={(event) => setNewDeviceCategory(event.target.value)}
-                  disabled={!hasCategories}
-                >
-                  <option value="">Select category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-                <button type="submit" disabled={!hasCategories}>
-                  Create Device
-                </button>
-              </form>
-
-              <form
-                className="manager-form"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  if (
-                    onAddPort(
-                      portDeviceId,
-                      portKind,
-                      portLabel,
-                      portConnectorCategory,
-                      portConnectorType,
-                    )
-                  ) {
-                    setPortLabel('')
-                  }
-                }}
+                {Object.entries(connectorCategoryLabels).map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Tipo connettore porte in serie"
+                value={bulkConnectorType}
+                onChange={(event) => setBulkConnectorType(event.target.value)}
               >
-                <strong>Add Port To Device</strong>
-                <select
-                  value={portDeviceId}
-                  onChange={(event) => setPortDeviceId(event.target.value)}
-                  disabled={!hasDevices}
-                >
-                  <option value="">Select device</option>
-                  {sortedDevices.map((device) => (
-                    <option key={device.id} value={device.id}>
-                      {device.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={portKind}
-                  onChange={(event) => setPortKind(event.target.value as PortKind)}
-                >
-                  <option value="input">Input</option>
-                  <option value="output">Output</option>
-                  <option value="bidirectional">Bidirectional</option>
-                </select>
-                <input
-                  value={portLabel}
-                  onChange={(event) => setPortLabel(event.target.value)}
-                  placeholder="Port label"
-                />
-                <select
-                  value={portConnectorCategory}
-                  onChange={(event) => {
-                    const next = event.target.value as ConnectorCategory
-                    setPortConnectorCategory(next)
-                    setPortConnectorType(connectorCatalog[next][0])
-                  }}
-                >
-                  {Object.entries(connectorCategoryLabels).map(([id, label]) => (
-                    <option key={id} value={id}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={portConnectorType}
-                  onChange={(event) => setPortConnectorType(event.target.value)}
-                >
-                  {connectorCatalog[portConnectorCategory].map((connector) => (
-                    <option key={connector} value={connector}>
-                      {connector}
-                    </option>
-                  ))}
-                </select>
-                <button type="submit" disabled={!hasDevices}>
-                  Add Port
-                </button>
-              </form>
-
-              <form
-                className="manager-form"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  onBulkAddPorts(
+                {connectorCatalog[bulkConnectorCategory].map((connector) => (
+                  <option key={connector} value={connector}>
+                    {connector}
+                  </option>
+                ))}
+              </select>
+              <button type="submit">Aggiungi porte</button>
+              <button
+                type="button"
+                onClick={() =>
+                  onBulkRemovePorts(
                     bulkDeviceId,
                     bulkPortKind,
                     bulkPrefix,
-                    Number.parseInt(bulkCount, 10),
-                    Number.parseInt(bulkStartIndex, 10),
+                    Number.parseInt(bulkQuantità, 10),
                     bulkConnectorCategory,
                     bulkConnectorType,
                   )
-                }}
+                }
               >
-                <strong>Bulk Add / Remove Ports</strong>
-                <select
-                  value={bulkDeviceId}
-                  onChange={(event) => setBulkDeviceId(event.target.value)}
-                  disabled={!hasDevices}
-                >
-                  <option value="">Select device</option>
-                  {sortedDevices.map((device) => (
-                    <option key={device.id} value={device.id}>
-                      {device.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={bulkPortKind}
-                  onChange={(event) => setBulkPortKind(event.target.value as PortKind)}
-                >
-                  <option value="input">Input</option>
-                  <option value="output">Output</option>
-                  <option value="bidirectional">Bidirectional</option>
-                </select>
-                <input
-                  value={bulkPrefix}
-                  onChange={(event) => setBulkPrefix(event.target.value)}
-                  placeholder="Prefix (e.g. SDI In)"
-                />
-                <input
-                  value={bulkCount}
-                  onChange={(event) => setBulkCount(event.target.value)}
-                  placeholder="Count"
-                />
-                <input
-                  value={bulkStartIndex}
-                  onChange={(event) => setBulkStartIndex(event.target.value)}
-                  placeholder="Start index"
-                />
-                <select
-                  value={bulkConnectorCategory}
-                  onChange={(event) => {
-                    const next = event.target.value as ConnectorCategory
-                    setBulkConnectorCategory(next)
-                    setBulkConnectorType(connectorCatalog[next][0])
-                  }}
-                >
-                  {Object.entries(connectorCategoryLabels).map(([id, label]) => (
-                    <option key={id} value={id}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={bulkConnectorType}
-                  onChange={(event) => setBulkConnectorType(event.target.value)}
-                >
-                  {connectorCatalog[bulkConnectorCategory].map((connector) => (
-                    <option key={connector} value={connector}>
-                      {connector}
-                    </option>
-                  ))}
-                </select>
-                <button type="submit">Bulk Add</button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onBulkRemovePorts(
-                      bulkDeviceId,
-                      bulkPortKind,
-                      bulkPrefix,
-                      Number.parseInt(bulkCount, 10),
-                      bulkConnectorCategory,
-                      bulkConnectorType,
-                    )
-                  }
-                >
-                  Bulk Remove
-                </button>
-              </form>
+                Rimuovi porte
+              </button>
+            </form>
 
-              <div className="manager-list">
-                <strong>Manage Categories</strong>
-                {categories.map((category) => (
-                  <div key={category.id} className="manager-row">
-                    {editingCategoryId === category.id ? (
-                      <div className="inline-edit">
-                        <input
-                          value={editingCategoryLabel}
-                          onChange={(event) =>
-                            setEditingCategoryLabel(event.target.value)
+            <div className="manager-list">
+              <strong>Categorie</strong>
+              {categories.map((category) => (
+                <div key={category.id} className="manager-row">
+                  {editingCategoryId === category.id ? (
+                    <div className="inline-edit">
+                      <input
+                        aria-label="Nome categoria"
+                        value={editingCategoryLabel}
+                        onChange={(event) =>
+                          setEditingCategoryLabel(event.target.value)
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            onUpdateCategory(category.id, editingCategoryLabel)
+                          ) {
+                            setEditingCategoryId('')
+                            setEditingCategoryLabel('')
                           }
-                        />
+                        }}
+                      >
+                        Salva
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span>{category.label}</span>
+                      <div>
                         <button
                           type="button"
                           onClick={() => {
-                            if (onUpdateCategory(category.id, editingCategoryLabel)) {
-                              setEditingCategoryId('')
-                              setEditingCategoryLabel('')
-                            }
+                            setEditingCategoryId(category.id)
+                            setEditingCategoryLabel(category.label)
                           }}
                         >
-                          Save
+                          Modifica
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteCategory(category.id)}
+                        >
+                          Elimina
                         </button>
                       </div>
-                    ) : (
-                      <>
-                        <span>{category.label}</span>
-                        <div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingCategoryId(category.id)
-                              setEditingCategoryLabel(category.label)
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDeleteCategory(category.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="manager-list">
-                <div className="manager-list-header">
-                  <strong>Manage Devices And Ports</strong>
-                  <button
-                    type="button"
-                    onClick={() => setIsManageDevicesOpen((current) => !current)}
-                  >
-                    {isManageDevicesOpen ? 'Collapse' : 'Expand'}
-                  </button>
+                    </>
+                  )}
                 </div>
-                {isManageDevicesOpen
-                  ? sortedDevices.map((device) => (
-                  <div key={device.id} className="manager-device">
-                    <div className="manager-row">
-                      {editingDeviceId === device.id ? (
-                        <div className="inline-edit">
-                          <input
-                            value={editingDeviceName}
-                            onChange={(event) =>
-                              setEditingDeviceName(event.target.value)
-                            }
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (
-                                onUpdateDevice(
-                                  device.id,
-                                  editingDeviceName,
-                                  device.category,
-                                )
-                              ) {
-                                setEditingDeviceId('')
-                                setEditingDeviceName('')
-                              }
-                            }}
-                          >
-                            Save
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="manager-row-main">
-                            <span>{device.name}</span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setExpandedDevices((current) => ({
-                                  ...current,
-                                  [device.id]: !(current[device.id] ?? false),
-                                }))
-                              }
-                            >
-                              {expandedDevices[device.id] ? 'Hide Ports' : 'Show Ports'}
-                            </button>
-                          </div>
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingDeviceId(device.id)
-                                setEditingDeviceName(device.name)
-                              }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onDeleteDevice(device.id)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+              ))}
+            </div>
 
-                    {expandedDevices[device.id] ? (
-                      <>
-                        <div className="manager-move">
-                      <select
-                        value={device.category}
-                        onChange={(event) =>
-                          onMoveDevice(device.id, event.target.value)
-                        }
-                      >
-                        {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.label}
-                          </option>
-                        ))}
-                      </select>
-                      <small>Move device to category</small>
-                        </div>
-
-                        {[...device.inputs, ...device.outputs].map((port) => (
-                      <div
-                        key={`${device.id}:${port.kind}:${port.id}`}
-                        className="manager-row port-row"
-                      >
-                        {editingPortKey === `${device.id}:${port.kind}:${port.id}` ? (
+            <div className="manager-list">
+              <div className="manager-list-header">
+                <strong>Dispositivi e porte</strong>
+                <button
+                  type="button"
+                  onClick={() => setIsManageDevicesOpen((current) => !current)}
+                >
+                  {isManageDevicesOpen ? 'Comprimi' : 'Espandi'}
+                </button>
+              </div>
+              {isManageDevicesOpen
+                ? sortedDevices.map((device) => (
+                    <div key={device.id} className="manager-device">
+                      <div className="manager-row">
+                        {editingDeviceId === device.id ? (
                           <div className="inline-edit">
                             <input
-                              value={editingPortLabel}
+                              aria-label="Nome dispositivo"
+                              value={editingDeviceName}
                               onChange={(event) =>
-                                setEditingPortLabel(event.target.value)
+                                setEditingDeviceName(event.target.value)
                               }
                             />
-                            <select
-                              value={editingPortKind}
-                              onChange={(event) =>
-                                setEditingPortKind(event.target.value as PortKind)
-                              }
-                            >
-                              <option value="input">input</option>
-                              <option value="output">output</option>
-                              <option value="bidirectional">bidirectional</option>
-                            </select>
-                            <select
-                              value={editingPortConnectorCategory}
-                              onChange={(event) => {
-                                const next = event.target
-                                  .value as ConnectorCategory
-                                setEditingPortConnectorCategory(next)
-                                setEditingPortConnectorType(connectorCatalog[next][0])
-                              }}
-                            >
-                              {Object.entries(connectorCategoryLabels).map(
-                                ([id, label]) => (
-                                  <option key={id} value={id}>
-                                    {label}
-                                  </option>
-                                ),
-                              )}
-                            </select>
-                            <select
-                              value={editingPortConnectorType}
-                              onChange={(event) =>
-                                setEditingPortConnectorType(event.target.value)
-                              }
-                            >
-                              {connectorCatalog[editingPortConnectorCategory].map(
-                                (connector) => (
-                                  <option key={connector} value={connector}>
-                                    {connector}
-                                  </option>
-                                ),
-                              )}
-                            </select>
                             <button
                               type="button"
                               onClick={() => {
                                 if (
-                                  onUpdatePort(
+                                  onUpdateDevice(
                                     device.id,
-                                    port.id,
-                                    port.kind,
-                                    editingPortLabel,
-                                    editingPortKind,
-                                    editingPortConnectorCategory,
-                                    editingPortConnectorType,
+                                    editingDeviceName,
+                                    device.category,
                                   )
                                 ) {
-                                  setEditingPortKey('')
-                                  setEditingPortLabel('')
+                                  setEditingDeviceId('')
+                                  setEditingDeviceName('')
                                 }
                               }}
                             >
-                              Save
+                              Salva
                             </button>
                           </div>
                         ) : (
                           <>
-                            <span>
-                              {port.label} ({port.kind}, {port.connectorType})
-                            </span>
+                            <div className="manager-row-main">
+                              <span>{device.name}</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedDevices((current) => ({
+                                    ...current,
+                                    [device.id]: !(current[device.id] ?? false),
+                                  }))
+                                }
+                              >
+                                {expandedDevices[device.id]
+                                  ? 'Nascondi porte'
+                                  : 'Mostra porte'}
+                              </button>
+                            </div>
                             <div>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setEditingPortKey(
-                                    `${device.id}:${port.kind}:${port.id}`,
-                                  )
-                                  setEditingPortLabel(port.label)
-                                  setEditingPortKind(port.kind)
-                                  setEditingPortConnectorCategory(
-                                    port.connectorCategory,
-                                  )
-                                  setEditingPortConnectorType(port.connectorType)
+                                  setEditingDeviceId(device.id)
+                                  setEditingDeviceName(device.name)
                                 }}
                               >
-                                Edit
+                                Modifica
                               </button>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  onDeletePort(device.id, port.id, port.kind)
-                                }
+                                onClick={() => onDeleteDevice(device.id)}
                               >
-                                Delete
+                                Elimina
                               </button>
                             </div>
                           </>
                         )}
                       </div>
-                        ))}
-                      </>
-                    ) : null}
-                  </div>
+
+                      {expandedDevices[device.id] ? (
+                        <>
+                          <div className="manager-move">
+                            <select
+                              aria-label={`Categoria di ${device.name}`}
+                              value={device.category}
+                              onChange={(event) =>
+                                onMoveDevice(device.id, event.target.value)
+                              }
+                            >
+                              {categories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                  {category.label}
+                                </option>
+                              ))}
+                            </select>
+                            <small>Sposta nella categoria</small>
+                          </div>
+
+                          {[...device.inputs, ...device.outputs].map((port) => (
+                            <div
+                              key={`${device.id}:${port.kind}:${port.id}`}
+                              className="manager-row port-row"
+                            >
+                              {editingPortKey ===
+                              `${device.id}:${port.kind}:${port.id}` ? (
+                                <div className="inline-edit">
+                                  <input
+                                    aria-label="Nome porta"
+                                    value={editingPortLabel}
+                                    onChange={(event) =>
+                                      setEditingPortLabel(event.target.value)
+                                    }
+                                  />
+                                  <select
+                                    aria-label="Direzione porta"
+                                    value={editingPortKind}
+                                    onChange={(event) =>
+                                      setEditingPortKind(
+                                        event.target.value as PortKind,
+                                      )
+                                    }
+                                  >
+                                    <option value="input">Ingresso</option>
+                                    <option value="output">Uscita</option>
+                                    <option value="bidirectional">
+                                      Bidirezionale
+                                    </option>
+                                  </select>
+                                  <select
+                                    aria-label="Categoria del connettore modificato"
+                                    value={editingPortConnectorCategory}
+                                    onChange={(event) => {
+                                      const next = event.target
+                                        .value as ConnectorCategory
+                                      setEditingPortConnectorCategory(next)
+                                      setEditingPortConnectorType(
+                                        connectorCatalog[next][0],
+                                      )
+                                    }}
+                                  >
+                                    {Object.entries(
+                                      connectorCategoryLabels,
+                                    ).map(([id, label]) => (
+                                      <option key={id} value={id}>
+                                        {label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <select
+                                    aria-label="Tipo del connettore modificato"
+                                    value={editingPortConnectorType}
+                                    onChange={(event) =>
+                                      setEditingPortConnectorType(
+                                        event.target.value,
+                                      )
+                                    }
+                                  >
+                                    {connectorCatalog[
+                                      editingPortConnectorCategory
+                                    ].map((connector) => (
+                                      <option key={connector} value={connector}>
+                                        {connector}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (
+                                        onUpdatePort(
+                                          device.id,
+                                          port.id,
+                                          port.kind,
+                                          editingPortLabel,
+                                          editingPortKind,
+                                          editingPortConnectorCategory,
+                                          editingPortConnectorType,
+                                        )
+                                      ) {
+                                        setEditingPortKey('')
+                                        setEditingPortLabel('')
+                                      }
+                                    }}
+                                  >
+                                    Salva
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span>
+                                    {port.label} ({port.kind},{' '}
+                                    {port.connectorType})
+                                  </span>
+                                  <div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingPortKey(
+                                          `${device.id}:${port.kind}:${port.id}`,
+                                        )
+                                        setEditingPortLabel(port.label)
+                                        setEditingPortKind(port.kind)
+                                        setEditingPortConnectorCategory(
+                                          port.connectorCategory,
+                                        )
+                                        setEditingPortConnectorType(
+                                          port.connectorType,
+                                        )
+                                      }}
+                                    >
+                                      Modifica
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        onDeletePort(
+                                          device.id,
+                                          port.id,
+                                          port.kind,
+                                        )
+                                      }
+                                    >
+                                      Elimina
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </>
+                      ) : null}
+                    </div>
                   ))
-                  : null}
-              </div>
+                : null}
             </div>
-          </section>
-        </div>
+          </div>
+        </Modal>
       ) : null}
     </aside>
   )

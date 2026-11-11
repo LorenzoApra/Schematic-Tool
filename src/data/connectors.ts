@@ -42,10 +42,11 @@ export const connectorCatalog: Record<ConnectorCategory, string[]> = {
 export const connectorCategoryLabels: Record<ConnectorCategory, string> = {
   video: 'Video',
   audio: 'Audio',
-  network: 'Network',
-  lighting: 'Lighting',
-  power: 'Power',
+  network: 'Rete',
+  lighting: 'Luci',
+  power: 'Alimentazione',
 }
 
 export const defaultConnectorCategory: ConnectorCategory = 'audio'
-export const defaultConnectorType = connectorCatalog[defaultConnectorCategory][0]
+export const defaultConnectorType =
+  connectorCatalog[defaultConnectorCategory][0]

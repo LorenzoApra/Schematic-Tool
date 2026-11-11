@@ -15,6 +15,7 @@ export const connectorTypeColors: Record<string, string> = {
   'AES/EBU': '#0284c7',
   MADI: '#06b6d4',
   AES50: '#0891b2',
+  RDNet: '#6366f1',
 
   Ethernet: '#22c55e',
   'Ethernet + PoE': '#16a34a',

@@ -21,14 +21,15 @@ export function validateConnection({
   if (!['output', 'bidirectional'].includes(source.kind)) {
     return {
       valid: false,
-      error: 'Connections must start from an output or bidirectional port.',
+      error: 'Parti da un’uscita o da una porta bidirezionale.',
     }
   }
 
   if (!['input', 'bidirectional'].includes(target.kind)) {
     return {
       valid: false,
-      error: 'Connections must end at an input or bidirectional port.',
+      error:
+        'Il collegamento deve terminare in un ingresso o una porta bidirezionale.',
     }
   }
 
@@ -37,7 +38,7 @@ export function validateConnection({
     source.portId === target.portId &&
     source.kind === target.kind
   ) {
-    return { valid: false, error: 'Cannot connect a port to itself.' }
+    return { valid: false, error: 'Non puoi collegare una porta a se stessa.' }
   }
 
   const isPortAlreadyUsed = (port: PortRef) =>
@@ -54,21 +55,28 @@ export function validateConnection({
   if (isPortAlreadyUsed(source)) {
     return {
       valid: false,
-      error: 'This source port already has a connection.',
+      error:
+        'La porta sorgente è già collegata. Rimuovi prima il cavo esistente.',
     }
   }
 
   if (isPortAlreadyUsed(target)) {
     return {
       valid: false,
-      error: 'This target port already has a connection.',
+      error:
+        'La porta di destinazione è già collegata. Rimuovi prima il cavo esistente.',
     }
   }
 
   const sourcePort = resolvePort(source)
   const targetPort = resolvePort(target)
-  if (!sourcePort || !targetPort) {
-    return { valid: false, error: 'Could not resolve one of the ports.' }
+  if (
+    !sourcePort ||
+    !targetPort ||
+    sourcePort.kind !== source.kind ||
+    targetPort.kind !== target.kind
+  ) {
+    return { valid: false, error: 'Una delle porte non è più disponibile.' }
   }
 
   if (
@@ -77,7 +85,7 @@ export function validateConnection({
   ) {
     return {
       valid: false,
-      error: `Connector mismatch: ${sourcePort.connectorType} cannot connect to ${targetPort.connectorType}.`,
+      error: `Connettori diversi: ${sourcePort.connectorType} e ${targetPort.connectorType}. Usa un convertitore compatibile.`,
     }
   }
 

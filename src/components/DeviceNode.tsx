@@ -1,9 +1,18 @@
-import { useState } from 'react'
-import type { DeviceDefinition, PortDefinition, PortRef } from '../types/schematic'
+import { useState, type CSSProperties } from 'react'
+import {
+  connectorTypeColors,
+  fallbackConnectionColor,
+} from '../data/connectorColors'
+import { portKey, samePort } from '../lib/project'
+import type {
+  DeviceDefinition,
+  PortDefinition,
+  PortRef,
+} from '../types/schematic'
+import { Icon } from './Icon'
 
 type PortViewMode = 'all' | 'input' | 'output' | 'bidirectional'
-
-interface DeviceNodeProps {
+interface Props {
   id: string
   x: number
   y: number
@@ -11,58 +20,19 @@ interface DeviceNodeProps {
   collapsed: boolean
   device: DeviceDefinition
   activePort: PortRef | null
+  selected: boolean
+  dimmed: boolean
+  connectedOnly: boolean
+  usedPorts: Set<string>
   onPortClick: (port: PortRef) => void
-  onDragStart: (nodeId: string, clientX: number, clientY: number) => void
-  onDeleteNode: (nodeId: string) => void
-  onRenameNode: (nodeId: string, name: string) => void
-  onToggleCollapse: (nodeId: string) => void
+  onSelect: (id: string) => void
+  onDragStart: (id: string, clientX: number, clientY: number) => void
+  onMove: (id: string, x: number, y: number) => void
+  onMoveEnd: () => void
+  onDeleteNode: (id: string) => void
+  onRenameNode: (id: string, name: string) => void
+  onToggleCollapse: (id: string) => void
 }
-
-const portViewModes: PortViewMode[] = ['all', 'input', 'output', 'bidirectional']
-const portViewLabels: Record<PortViewMode, string> = {
-  all: 'All',
-  input: 'Only In',
-  output: 'Only Out',
-  bidirectional: 'Only Bi',
-}
-
-function PortButton({
-  nodeId,
-  port,
-  activePort,
-  onPortClick,
-}: {
-  nodeId: string
-  port: PortDefinition
-  activePort: PortRef | null
-  onPortClick: (port: PortRef) => void
-}) {
-  const isActive =
-    activePort?.nodeId === nodeId &&
-    activePort.portId === port.id &&
-    activePort.kind === port.kind
-
-  return (
-    <button
-      type="button"
-      className={`port-button ${port.kind} ${isActive ? 'active' : ''}`}
-      data-node-id={nodeId}
-      data-port-id={port.id}
-      data-port-kind={port.kind}
-      onClick={() =>
-        onPortClick({
-          nodeId,
-          portId: port.id,
-          kind: port.kind,
-        })
-      }
-      title={`${port.label} (${port.kind})`}
-    >
-      {port.label} [{port.connectorType}]
-    </button>
-  )
-}
-
 export function DeviceNode({
   id,
   x,
@@ -71,171 +41,253 @@ export function DeviceNode({
   collapsed,
   device,
   activePort,
+  selected,
+  dimmed,
+  connectedOnly,
+  usedPorts,
   onPortClick,
+  onSelect,
   onDragStart,
+  onMove,
+  onMoveEnd,
   onDeleteNode,
   onRenameNode,
   onToggleCollapse,
-}: DeviceNodeProps) {
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [nextName, setNextName] = useState(displayName)
-  const [portViewMode, setPortViewMode] = useState<PortViewMode>('all')
-
-  const inputPorts = device.inputs.filter((port) => port.kind === 'input')
-  const outputPorts = device.outputs.filter((port) => port.kind === 'output')
-  const biPorts = [...device.inputs, ...device.outputs].filter(
-    (port) => port.kind === 'bidirectional',
-  )
-  const availablePortViewModes =
-    biPorts.length > 0
-      ? portViewModes
-      : portViewModes.filter((mode) => mode !== 'bidirectional')
-  const effectivePortViewMode = availablePortViewModes.includes(portViewMode)
-    ? portViewMode
-    : 'all'
-  const showInputs = effectivePortViewMode === 'all' || effectivePortViewMode === 'input'
-  const showOutputs = effectivePortViewMode === 'all' || effectivePortViewMode === 'output'
-  const showBidirectional =
-    effectivePortViewMode === 'all' || effectivePortViewMode === 'bidirectional'
-
-  const visibleColumns = [
-    showInputs ? { key: 'input', title: 'Inputs', ports: inputPorts } : null,
-    showOutputs ? { key: 'output', title: 'Outputs', ports: outputPorts } : null,
-  ].filter((column): column is { key: string; title: string; ports: PortDefinition[] } =>
-    Boolean(column && column.ports.length > 0),
-  )
-  const visibleBiPorts = showBidirectional ? biPorts : []
-  const hasVisiblePorts = visibleColumns.length > 0 || visibleBiPorts.length > 0
-  const nextPortViewMode = () => {
-    const currentIndex = availablePortViewModes.indexOf(effectivePortViewMode)
-    const safeIndex = currentIndex >= 0 ? currentIndex : 0
-    return availablePortViewModes[(safeIndex + 1) % availablePortViewModes.length]
+}: Props) {
+  const [editing, setEditing] = useState(false),
+    [name, setName] = useState(displayName),
+    [mode, setMode] = useState<PortViewMode>('all')
+  const allPorts = [...device.inputs, ...device.outputs]
+  const groups = [
+    {
+      kind: 'input',
+      label: 'INGRESSI',
+      ports: allPorts.filter((p) => p.kind === 'input'),
+    },
+    {
+      kind: 'output',
+      label: 'USCITE',
+      ports: allPorts.filter((p) => p.kind === 'output'),
+    },
+    {
+      kind: 'bidirectional',
+      label: 'BIDIREZIONALI',
+      ports: allPorts.filter((p) => p.kind === 'bidirectional'),
+    },
+  ]
+    .filter((group) => mode === 'all' || mode === group.kind)
+    .map((group) => ({
+      ...group,
+      ports: group.ports.filter(
+        (p) =>
+          !connectedOnly ||
+          usedPorts.has(portKey({ nodeId: id, portId: p.id, kind: p.kind })),
+      ),
+    }))
+    .filter((group) => group.ports.length)
+  const saveName = () => {
+    if (name.trim()) onRenameNode(id, name)
+    setEditing(false)
   }
-  const cyclePortViewMode = () => {
-    setPortViewMode(nextPortViewMode())
+  const portButton = (port: PortDefinition) => {
+    const ref: PortRef = { nodeId: id, portId: port.id, kind: port.kind },
+      used = usedPorts.has(portKey(ref)),
+      active = activePort && samePort(activePort, ref)
+    const color =
+      connectorTypeColors[port.connectorType] || fallbackConnectionColor
+    return (
+      <button
+        key={`${port.kind}:${port.id}`}
+        type="button"
+        className={`port-button ${port.kind} ${used ? 'connected' : ''} ${active ? 'active' : ''}`}
+        style={{ '--port-color': color } as CSSProperties}
+        data-node-id={id}
+        data-port-id={port.id}
+        data-port-kind={port.kind}
+        aria-pressed={Boolean(active)}
+        title={`${displayName} · ${port.label} · ${port.connectorType}${used ? ' · collegata' : ''}`}
+        onClick={() => onPortClick(ref)}
+      >
+        <span className="port-dot" />
+        <span className="port-label">{port.label}</span>
+        <small>{port.connectorType}</small>
+      </button>
+    )
   }
-  const nextPortViewLabel = portViewLabels[nextPortViewMode()]
-
   return (
     <article
-      className="device-node"
+      className={`device-node ${selected ? 'selected' : ''} ${dimmed ? 'dimmed' : ''}`}
+      data-node-id={id}
       style={{ left: x, top: y }}
-      onPointerDown={(event) => {
-        if (
-          (event.target as HTMLElement).closest(
-            '.port-button, .node-action-button, .node-name-editor',
-          )
-        ) {
-          return
-        }
-
-        onDragStart(id, event.clientX, event.clientY)
-      }}
+      onClick={() => onSelect(id)}
     >
-      <header>
-        {isEditingName ? (
-          <div className="node-name-editor">
+      <header
+        className="node-header"
+        tabIndex={0}
+        aria-label={`${displayName}. Trascina o usa le frecce per spostare.`}
+        onKeyDown={(event) => {
+          if ((event.target as HTMLElement).closest('button, input')) return
+          const delta = event.shiftKey ? 48 : 24
+          const directions: Record<string, [number, number]> = {
+            ArrowLeft: [-delta, 0],
+            ArrowRight: [delta, 0],
+            ArrowUp: [0, -delta],
+            ArrowDown: [0, delta],
+          }
+          if (directions[event.key]) {
+            event.preventDefault()
+            onSelect(id)
+            const [dx, dy] = directions[event.key]
+            onMove(id, Math.max(16, x + dx), Math.max(16, y + dy))
+            onMoveEnd()
+          }
+        }}
+        onPointerDown={(event) => {
+          if (
+            event.button !== 0 ||
+            (event.target as HTMLElement).closest('button, input, select, form')
+          )
+            return
+          event.preventDefault()
+          event.currentTarget.setPointerCapture(event.pointerId)
+          onSelect(id)
+          onDragStart(id, event.clientX, event.clientY)
+        }}
+      >
+        <span className="node-category-icon">
+          <Icon
+            name={
+              device.category.includes('rete')
+                ? 'grid'
+                : device.category.includes('audio')
+                  ? 'cable'
+                  : 'box'
+            }
+            size={17}
+          />
+        </span>
+        {editing ? (
+          <form
+            className="node-name-editor"
+            onSubmit={(event) => {
+              event.preventDefault()
+              saveName()
+            }}
+          >
             <input
-              value={nextName}
-              onChange={(event) => setNextName(event.target.value)}
+              autoFocus
+              aria-label="Nome del dispositivo"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              onBlur={saveName}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setEditing(false)
+              }}
             />
             <button
-              type="button"
-              className="node-action-button"
-              onClick={() => {
-                onRenameNode(id, nextName)
-                setIsEditingName(false)
-              }}
+              type="submit"
+              className="icon-button"
+              aria-label="Salva nome"
             >
-              Save
+              <Icon name="check" size={14} />
             </button>
-          </div>
+          </form>
         ) : (
-          <span>{displayName}</span>
+          <div className="node-title">
+            <strong title={displayName}>{displayName}</strong>
+            <small>{device.name}</small>
+          </div>
         )}
-        <button
-          type="button"
-          className="rename-node-button node-action-button"
-          onClick={() => {
-            setNextName(displayName)
-            setIsEditingName((current) => !current)
-          }}
-        >
-          Rename
-        </button>
-        <button
-          type="button"
-          className="collapse-node-button node-action-button"
-          onClick={() => onToggleCollapse(id)}
-        >
-          {collapsed ? 'Expand' : 'Collapse'}
-        </button>
-        <button
-          type="button"
-          className="filter-ports-button node-action-button"
-          onClick={cyclePortViewMode}
-          title={`Switch to ${nextPortViewLabel}`}
-        >
-          {portViewLabels[effectivePortViewMode]}
-        </button>
-        <button
-          type="button"
-          className="delete-node-button node-action-button"
-          onClick={() => onDeleteNode(id)}
-        >
-          Remove
-        </button>
+        <div className="node-actions" data-export-ignore>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={`Rinomina ${displayName}`}
+            title="Rinomina"
+            onClick={() => {
+              setName(displayName)
+              setEditing(true)
+            }}
+          >
+            <Icon name="edit" size={14} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={
+              collapsed ? `Espandi ${displayName}` : `Comprimi ${displayName}`
+            }
+            title={collapsed ? 'Espandi' : 'Comprimi'}
+            onClick={() => onToggleCollapse(id)}
+          >
+            <Icon name={collapsed ? 'plus' : 'minus'} size={14} />
+          </button>
+          <button
+            type="button"
+            className="icon-button danger-quiet"
+            aria-label={`Rimuovi ${displayName}`}
+            title="Rimuovi"
+            onClick={(event) => {
+              event.stopPropagation()
+              onDeleteNode(id)
+            }}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
       </header>
       {collapsed ? (
         <div className="collapsed-node-meta">
-          In {device.inputs.filter((p) => p.kind === 'input').length} / Out{' '}
-          {device.outputs.filter((p) => p.kind === 'output').length} / Bi{' '}
-          {biPorts.length}
+          {allPorts.length} porte <span>·</span>{' '}
+          {
+            allPorts.filter((p) =>
+              usedPorts.has(
+                portKey({ nodeId: id, portId: p.id, kind: p.kind }),
+              ),
+            ).length
+          }{' '}
+          collegate
         </div>
       ) : (
         <div className="ports-layout">
-          {!hasVisiblePorts ? (
-            <div className="ports-col">
-              <small>
-                {effectivePortViewMode === 'all'
-                  ? 'No ports configured'
-                  : 'No ports in this view'}
-              </small>
-            </div>
-          ) : (
-            <>
-              <div className="ports-row">
-                {visibleColumns.map((column) => (
-                  <div className="ports-col" key={column.key}>
-                    <strong>{column.title}</strong>
-                    {column.ports.map((port) => (
-                      <PortButton
-                        key={port.id}
-                        nodeId={id}
-                        port={port}
-                        activePort={activePort}
-                        onPortClick={onPortClick}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-              {visibleBiPorts.length > 0 ? (
-                <div className="ports-col bidirectional-ports">
-                  <strong>Bidirectional</strong>
-                  {visibleBiPorts.map((port) => (
-                    <PortButton
-                      key={port.id}
-                      nodeId={id}
-                      port={port}
-                      activePort={activePort}
-                      onPortClick={onPortClick}
-                    />
-                  ))}
+          <div className="ports-row">
+            {groups
+              .filter((g) => g.kind !== 'bidirectional')
+              .map((group) => (
+                <div className={`ports-col ${group.kind}`} key={group.kind}>
+                  <strong>{group.label}</strong>
+                  {group.ports.map(portButton)}
                 </div>
-              ) : null}
-            </>
+              ))}
+          </div>
+          {groups
+            .filter((g) => g.kind === 'bidirectional')
+            .map((group) => (
+              <div className="ports-col bidirectional-ports" key={group.kind}>
+                <strong>{group.label}</strong>
+                {group.ports.map(portButton)}
+              </div>
+            ))}
+          {!groups.length && (
+            <p className="node-no-ports">
+              {connectedOnly
+                ? 'Nessuna porta collegata'
+                : 'Nessuna porta in questa vista'}
+            </p>
           )}
+          <div className="node-footer" data-export-ignore>
+            <span>{allPorts.length} porte</span>
+            <select
+              aria-label={`Mostra porte di ${displayName}`}
+              value={mode}
+              onChange={(event) => setMode(event.target.value as PortViewMode)}
+            >
+              <option value="all">Tutte le porte</option>
+              <option value="input">Solo ingressi</option>
+              <option value="output">Solo uscite</option>
+              <option value="bidirectional">Solo bidirezionali</option>
+            </select>
+          </div>
         </div>
       )}
     </article>

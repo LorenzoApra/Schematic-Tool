@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local servers and browser tests
+.dev-server*.pid
+test-results/
+playwright-report/

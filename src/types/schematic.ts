@@ -1,11 +1,7 @@
 export type PortKind = 'input' | 'output' | 'bidirectional'
 
 export type ConnectorCategory =
-  | 'video'
-  | 'audio'
-  | 'network'
-  | 'lighting'
-  | 'power'
+  'video' | 'audio' | 'network' | 'lighting' | 'power'
 
 export interface PortDefinition {
   id: string
