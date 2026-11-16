@@ -21,6 +21,7 @@ import type {
 import { DeviceNode } from './DeviceNode'
 import { ProjectReports } from './ProjectReports'
 import { Icon } from './Icon'
+import { clampZoom, useCanvasZoom } from '../hooks/useCanvasZoom'
 
 interface Props {
   nodes: NodeInstance[]
@@ -55,7 +56,6 @@ interface Measurements {
   rects: Record<string, Rect>
   ports: Record<string, Point>
 }
-const clampZoom = (zoom: number) => Math.min(2, Math.max(0.1, zoom))
 
 export function SchematicCanvas(props: Props) {
   const {
@@ -68,8 +68,7 @@ export function SchematicCanvas(props: Props) {
     onMoveEnd,
   } = props
   const [view, setView] = useState<'diagram' | 'patch' | 'equipment'>('diagram')
-  const [zoom, setZoom] = useState(1),
-    [snap, setSnap] = useState(true),
+  const [snap, setSnap] = useState(true),
     [connectedOnly, setConnectedOnly] = useState(false)
   const [signalFilter, setSignalFilter] = useState('all'),
     [selectedCable, setSelectedCable] = useState<string | null>(null)
@@ -83,6 +82,7 @@ export function SchematicCanvas(props: Props) {
   })
   const stageRef = useRef<HTMLDivElement>(null),
     contentRef = useRef<HTMLDivElement>(null)
+  const { zoom, setZoom } = useCanvasZoom(stageRef, view === 'diagram')
   const dragRef = useRef<{ id: string; x: number; y: number } | null>(null)
   const previousNodeIds = useRef(new Set(nodes.map((n) => n.id)))
   const moveCallback = useRef(onNodeMove),
@@ -802,7 +802,12 @@ export function SchematicCanvas(props: Props) {
           </div>
         )}
         <div className="canvas-bottom-controls">
-          <div className="zoom-controls">
+          <div
+            className="zoom-controls"
+            role="group"
+            aria-label="Zoom dello schema"
+            title="Pizzica sul trackpad per fare zoom · Scorri con due dita per spostarti"
+          >
             <button
               type="button"
               className="icon-button"

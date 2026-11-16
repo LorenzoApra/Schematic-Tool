@@ -423,6 +423,10 @@ function App() {
               <dd>Esc</dd>
               <dt>Sposta dispositivo</dt>
               <dd>Trascina l’intestazione · tasti freccia</dd>
+              <dt>Zoom dello schema</dt>
+              <dd>Pizzica sul trackpad · Ctrl / ⌘ + scorrimento</dd>
+              <dt>Sposta l’area dello schema</dt>
+              <dd>Scorri con due dita sul trackpad</dd>
             </dl>
             <p className="muted">
               Il salvataggio automatico è locale a questo browser. Esporta un

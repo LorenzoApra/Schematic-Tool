@@ -18,6 +18,8 @@ Uno spazio di lavoro per progettare i flussi audio, video, rete e luci delle reg
 
 Il tema chiaro/scuro segue automaticamente l’impostazione del dispositivo, anche quando cambia mentre l’app è aperta. La guida nell’app riepiloga i comandi. La libreria personalizzata resta nel progetto ed è inclusa nel file JSON.
 
+Per fare zoom sullo schema puoi pizzicare con due dita sul trackpad, oppure tenere premuto Ctrl / ⌘ mentre scorri. Lo zoom segue il punto sotto il cursore; il normale scorrimento a due dita sposta l’area dello schema. Restano disponibili anche i pulsanti +, − e adatta allo schermo.
+
 ### Scorciatoie
 
 | Azione | Tasti |

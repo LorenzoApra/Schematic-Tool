@@ -431,3 +431,199 @@ for (const scheme of ['light', 'dark'] as const) {
     )
   })
 }
+
+test('trackpad zoom stays at the cursor while normal scrolling still pans the canvas', async ({
+  page,
+}) => {
+  const state = createDefaultProject()
+  state.nodes = [
+    { id: 'source', deviceId: 'panasonic-Aw-UE80', x: 1400, y: 1200 },
+    { id: 'target', deviceId: 'sdi-hdmi-converter', x: 1900, y: 1200 },
+  ]
+  state.connections = [
+    {
+      id: 'cable',
+      from: { nodeId: 'source', portId: 'sdi-out', kind: 'output' },
+      to: { nodeId: 'target', portId: 'sdi-in', kind: 'input' },
+    },
+  ]
+  await page.goto('./')
+  await page
+    .getByLabel('Importa progetto JSON')
+    .setInputFiles({
+      name: 'zoom.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(projectFile(state))),
+    })
+  await expect(page.locator('.device-node')).toHaveCount(2)
+  const stage = page.locator('.canvas-stage')
+  await stage.evaluate((el) =>
+    el.scrollTo({ left: 300, top: 400, behavior: 'instant' }),
+  )
+  const viewport = await stage.boundingBox()
+  const cursor = { x: viewport!.x + 250, y: viewport!.y + 160 }
+  const pointUnderCursor = () =>
+    stage.evaluate((el) => {
+      const zoom = new DOMMatrixReadOnly(
+        getComputedStyle(el.querySelector('.canvas-content')!).transform,
+      ).a
+      return {
+        zoom,
+        x: (el.scrollLeft + 250) / zoom,
+        y: (el.scrollTop + 160) / zoom,
+      }
+    })
+  const original = await pointUnderCursor()
+  const pageScale = await page.evaluate(() => ({
+    viewport: window.visualViewport?.scale,
+    dpr: devicePixelRatio,
+  }))
+  await page.mouse.move(cursor.x, cursor.y)
+  await page.keyboard.down('Control')
+  await page.mouse.wheel(0, -100)
+  await page.keyboard.up('Control')
+  await expect
+    .poll(async () => (await pointUnderCursor()).zoom)
+    .toBeGreaterThan(original.zoom)
+  const enlarged = await pointUnderCursor()
+  expect(enlarged.zoom).toBeCloseTo(original.zoom * Math.exp(0.2), 3)
+  expect(Math.abs(enlarged.x - original.x)).toBeLessThan(1.5)
+  expect(Math.abs(enlarged.y - original.y)).toBeLessThan(1.5)
+  expect(
+    await page.evaluate(() => ({
+      viewport: window.visualViewport?.scale,
+      dpr: devicePixelRatio,
+    })),
+  ).toEqual(pageScale)
+
+  const prevented = await stage.evaluate(
+    (el, cursor) =>
+      !el.dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          deltaY: 100,
+          clientX: cursor.x,
+          clientY: cursor.y,
+        }),
+      ),
+    cursor,
+  )
+  expect(prevented).toBe(true)
+  await expect(page.locator('.zoom-value')).toHaveText('100%')
+  const restored = await pointUnderCursor()
+  expect(Math.abs(restored.x - original.x)).toBeLessThan(2)
+  expect(Math.abs(restored.y - original.y)).toBeLessThan(2)
+  const scrollTop = await stage.evaluate((el) => el.scrollTop)
+  await page.mouse.wheel(0, 160)
+  await expect
+    .poll(() => stage.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(scrollTop)
+  await expect(page.locator('.zoom-value')).toHaveText('100%')
+  expect(
+    await page
+      .locator('.library-panel')
+      .evaluate(
+        (el) =>
+          !el.dispatchEvent(
+            new WheelEvent('wheel', {
+              bubbles: true,
+              cancelable: true,
+              ctrlKey: true,
+              deltaY: -100,
+            }),
+          ),
+      ),
+  ).toBe(false)
+  await expect(page.locator('.connection-line')).toHaveCount(1)
+
+  await page.getByRole('button', { name: 'Patch list', exact: true }).click()
+  expect(
+    await stage.evaluate(
+      (el) =>
+        !el.dispatchEvent(
+          new WheelEvent('wheel', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            deltaY: -100,
+          }),
+        ),
+    ),
+  ).toBe(false)
+  await page.getByRole('button', { name: 'Schema', exact: true }).click()
+  await stage.evaluate(
+    (el, cursor) =>
+      el.dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          deltaY: -100,
+          clientX: cursor.x,
+          clientY: cursor.y,
+        }),
+      ),
+    cursor,
+  )
+  await expect(page.locator('.zoom-value')).toHaveText('122%')
+})
+
+test('native Safari pinch gestures use absolute scale, avoid double zoom and respect the zoom limits', async ({
+  page,
+}) => {
+  await demo(page)
+  await page.locator('.zoom-value').click()
+  const stage = page.locator('.canvas-stage')
+  const gesture = (type: string, scale: number) =>
+    stage.evaluate(
+      (el, { type, scale }) => {
+        const bounds = el.getBoundingClientRect()
+        const event = new Event(type, { bubbles: true, cancelable: true })
+        Object.assign(event, {
+          scale,
+          clientX: bounds.left + 200,
+          clientY: bounds.top + 120,
+        })
+        return !el.dispatchEvent(event)
+      },
+      { type, scale },
+    )
+  expect(await gesture('gesturestart', 1)).toBe(true)
+  expect(await gesture('gesturechange', 1.2)).toBe(true)
+  await expect(page.locator('.zoom-value')).toHaveText('120%')
+  await stage.evaluate((el) =>
+    el.dispatchEvent(
+      new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        deltaY: -100,
+      }),
+    ),
+  )
+  await expect(page.locator('.zoom-value')).toHaveText('120%')
+  await gesture('gesturechange', 1.5)
+  await expect(page.locator('.zoom-value')).toHaveText('150%')
+  await gesture('gesturechange', 0.01)
+  await expect(page.locator('.zoom-value')).toHaveText('10%')
+  await gesture('gesturechange', 10)
+  await expect(page.locator('.zoom-value')).toHaveText('200%')
+  await gesture('gestureend', 10)
+  await page.locator('.zoom-value').click()
+  await stage.evaluate((el) =>
+    el.dispatchEvent(
+      new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        metaKey: true,
+        deltaMode: WheelEvent.DOM_DELTA_LINE,
+        deltaY: -1,
+      }),
+    ),
+  )
+  await expect(page.locator('.zoom-value')).toHaveText('103%')
+  await page.getByRole('button', { name: 'Riduci zoom', exact: true }).click()
+  await expect(page.locator('.zoom-value')).toHaveText('93%')
+})
