@@ -175,6 +175,39 @@
 .header-actions button {
   min-height: 35px;
 }
+.app-layout .mac-download-button {
+  color: var(--accent);
+}
+.mac-download a {
+  color: var(--accent);
+  font-size: 12px;
+}
+.download-status {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  margin: 18px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.mac-download .download-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  color: var(--surface);
+  background: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.mac-download .download-link:hover {
+  background: var(--accent-hover);
+}
 .library-panel {
   grid-column: 1;
   grid-row: 2;

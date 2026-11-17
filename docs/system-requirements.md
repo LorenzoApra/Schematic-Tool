@@ -17,6 +17,18 @@ Se la memoria locale è bloccata o piena, l’app continua a funzionare e mostra
 
 ## Sviluppo locale
 
+### App macOS installabile
+
+- macOS **13.3 o successivo**, su Apple Silicon oppure Intel.
+- Pacchetto universale ZIP: trascinare Schematic su Applicazioni.
+- Nessuna dipendenza da Node.js o Internet durante l’uso.
+- Salvataggio automatico su disco, indipendente dai dati della versione web.
+- Scambio dei progetti tramite JSON; esportazioni JSON, PNG, PDF e CSV con finestre native.
+
+Per compilare l’app servono anche Xcode o i Command Line Tools. [Istruzioni e distribuzione](macos.md).
+
+### Server di sviluppo
+
 - Node.js **20.19+ nella serie 20, oppure 22.12+**. Consigliato Node 22 LTS o successivo.
 - npm incluso con Node.js.
 - macOS o Windows compatibile con la versione Node scelta; le versioni Linux supportate da Node funzionano con gli stessi comandi npm.

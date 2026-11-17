@@ -22,15 +22,30 @@ Per fare zoom sullo schema puoi pizzicare con due dita sul trackpad, oppure tene
 
 ### Scorciatoie
 
-| Azione | Tasti |
-| --- | --- |
-| Annulla / ripristina | ⌘ o Ctrl + Z / Shift + Z |
-| Duplica il dispositivo selezionato | ⌘ o Ctrl + D |
-| Elimina il dispositivo o cavo selezionato | Delete / Backspace |
-| Annulla collegamento e selezione | Esc |
+| Azione                                           | Tasti                              |
+| ------------------------------------------------ | ---------------------------------- |
+| Annulla / ripristina                             | ⌘ o Ctrl + Z / Shift + Z           |
+| Duplica il dispositivo selezionato               | ⌘ o Ctrl + D                       |
+| Elimina il dispositivo o cavo selezionato        | Delete / Backspace                 |
+| Annulla collegamento e selezione                 | Esc                                |
 | Sposta dispositivo dall’intestazione focalizzata | Frecce; Shift per passi più grandi |
 
-## Avvio locale
+## App per macOS
+
+La versione Mac usa la stessa interfaccia e funziona interamente offline, senza installare Node.js. Richiede **macOS 13.3+**, su **Apple Silicon e Intel**. Sul sito, **App per Mac** offre il ZIP della release più recente quando è disponibile: aprilo e trascina Schematic su Applicazioni.
+
+Il progetto viene salvato automaticamente sul Mac. Per trasferire uno schema tra browser e app usa **Esporta progetto** e **Apri progetto**.
+
+Per compilare il pacchetto su un Mac con gli strumenti Xcode:
+
+```sh
+npm ci
+npm run build:mac
+```
+
+Il pacchetto è in `release/Schematic-macOS-universal.zip`. [Compilazione, test, pubblicazione e firma Apple](docs/macos.md).
+
+## Avvio locale per sviluppo
 
 Richiede **Node.js 20.19+ oppure 22.12+** e npm. Consigliato Node 22 LTS o successivo.
 
@@ -56,6 +71,7 @@ Sono disponibili anche `scripts/starter-macos.command` e `scripts/stopper-macos.
 npm run check       # lint, test della logica e compilazione
 npx playwright install chromium firefox webkit
 npm run test:e2e    # test sul sito compilato, inclusi i percorsi GitHub Pages
+npm run test:mac    # integrazione WKWebView, salvataggio e download nativi (solo Mac)
 ```
 
 Per usare Chrome già installato: `PLAYWRIGHT_CHROME_CHANNEL=chrome npm run test:e2e`. Per salvare i browser di test in una cartella specifica, usa `PLAYWRIGHT_BROWSERS_PATH` sia nell’installazione sia nei test. I test coprono collegamenti, geometria, importazioni, annullamento, navigazione da tastiera, layout mobile, esportazioni e uno schema da 40 dispositivi. WebKit verifica il motore usato da Safari, senza sostituire un collaudo sulle singole versioni di Safari e iOS.
@@ -76,6 +92,8 @@ L’anteprima compilata è su [http://127.0.0.1:4173/Schematic-Tool/](http://127
 - `src/lib/export.ts`: esportazioni caricate solo quando richieste.
 - `src/data`: catalogo dispositivi, connettori e colori.
 - `tests`: verifiche della logica e prove su Chromium, Firefox e WebKit.
+- `macos`: app Swift, salvataggio su disco, finestre file e icona macOS.
+- `scripts/build-macos.mjs`: compilazione dell’app universale e creazione dello ZIP.
 
 ### Limiti pratici
 

@@ -1,13 +1,17 @@
 import './App.css'
+import { useState } from 'react'
 import { DeviceLibrary } from './components/DeviceLibrary'
 import { SchematicCanvas } from './components/SchematicCanvas'
 import { Icon } from './components/Icon'
 import { Modal } from './components/Modal'
+import { MacDownload } from './components/MacDownload'
+import { isDesktop } from './lib/storage'
 import { useProjectEditor } from './hooks/useProjectEditor'
 import { cleanConnections, createDefaultProject } from './lib/project'
 import { arrangeBySignal } from './lib/layout'
 
 function App() {
+  const [showMacDownload, setShowMacDownload] = useState(false)
   const {
     update,
     undo,
@@ -82,10 +86,24 @@ function App() {
               ? 'Salvataggio non disponibile · esporta il progetto'
               : saveStatus === 'saving'
                 ? 'Salvataggio…'
-                : 'Salvato su questo browser'}
+                : isDesktop
+                  ? 'Salvato su questo Mac'
+                  : 'Salvato su questo browser'}
           </span>
         </div>
         <div className="header-actions">
+          {!isDesktop && (
+            <button
+              type="button"
+              className="mac-download-button"
+              title="Scarica per Mac"
+              aria-label="Scarica per Mac"
+              onClick={() => setShowMacDownload(true)}
+            >
+              <Icon name="download" />
+              <span>App per Mac</span>
+            </button>
+          )}
           <button
             type="button"
             className="icon-button"
@@ -409,8 +427,8 @@ function App() {
             <p>
               <strong>3. Porta lo schema con te</strong>
               <br />
-              Esporta il progetto per riaprirlo su un altro browser. Usa PNG,
-              PDF e CSV per la documentazione operativa.
+              Esporta il progetto per riaprirlo sul web o nell’app per Mac. Usa
+              PNG, PDF e CSV per la documentazione operativa.
             </p>
             <dl className="shortcuts">
               <dt>Annulla / Ripristina</dt>
@@ -429,11 +447,16 @@ function App() {
               <dd>Scorri con due dita sul trackpad</dd>
             </dl>
             <p className="muted">
-              Il salvataggio automatico è locale a questo browser. Esporta un
-              file progetto per conservarne una copia o trasferirlo.
+              {isDesktop
+                ? 'Il salvataggio automatico è locale a questo Mac.'
+                : 'Il salvataggio automatico è locale a questo browser.'}{' '}
+              Esporta un file progetto per conservarne una copia o trasferirlo.
             </p>
           </div>
         </Modal>
+      )}
+      {showMacDownload && (
+        <MacDownload onClose={() => setShowMacDownload(false)} />
       )}
     </div>
   )

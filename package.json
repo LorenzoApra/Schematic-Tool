@@ -1,7 +1,7 @@
 {
   "name": "schematic-tool",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,9 @@
     "start:windows": "scripts\\start-windows.cmd",
     "stop:windows": "scripts\\stop-windows.cmd",
     "build": "tsc -b && vite build",
+    "build:desktop": "tsc -b && vite build --mode desktop",
+    "build:mac": "npm run build:desktop && node scripts/build-macos.mjs",
+    "test:mac": "npm run build:desktop && node scripts/test-macos.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --import tsx --test tests/unit/*.test.ts",

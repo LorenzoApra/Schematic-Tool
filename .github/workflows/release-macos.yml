@@ -1,0 +1,108 @@
+name: Build and release macOS
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify release version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+            if (process.env.GITHUB_REF_NAME !== `v${version}`) throw new Error("Il tag deve corrispondere alla versione in package.json");
+          '
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:mac
+
+      - name: Import Developer ID certificate when configured
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          if [ -z "$CERTIFICATE" ]; then
+            if [ -n "$MACOS_SIGN_IDENTITY" ]; then
+              echo "MACOS_SIGN_IDENTITY richiede MACOS_CERTIFICATE_P12"
+              exit 1
+            fi
+            exit 0
+          fi
+          if [ -z "$MACOS_SIGN_IDENTITY" ]; then
+            echo "Configurare MACOS_SIGN_IDENTITY insieme al certificato"
+            exit 1
+          fi
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          KEYCHAIN_PATH="$RUNNER_TEMP/schematic-signing.keychain-db"
+          printf '%s' "$CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+      - name: Configure notarization when configured
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_APP_PASSWORD" ]; then
+            if [ -z "$MACOS_SIGN_IDENTITY" ]; then
+              echo "La notarizzazione richiede un certificato Developer ID"
+              exit 1
+            fi
+            xcrun notarytool store-credentials schematic-notary --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+            echo "MACOS_NOTARY_PROFILE=schematic-notary" >> "$GITHUB_ENV"
+          fi
+
+      - run: npm run build:mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Schematic-macOS-universal
+          path: release/Schematic-macOS-universal.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          Schematic per macOS 13.3 o successivo. Un unico pacchetto per Apple Silicon e Intel.
+
+          Apri il ZIP e trascina Schematic nella cartella Applicazioni. Non richiede Node.js né una connessione Internet durante l’uso.
+
+          I progetti dell’app sono salvati sul Mac. Per trasferirli dal web usa **Esporta progetto**, quindi **Apri progetto** nell’app.
+          NOTES
+          if [ -z "$MACOS_NOTARY_PROFILE" ]; then
+            printf '\nQuesta versione non è notarizzata da Apple: macOS può richiedere un’autorizzazione in Impostazioni di Sistema → Privacy e sicurezza.\n' >> "$RUNNER_TEMP/release-notes.md"
+          fi
+          if ! gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "Schematic $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          gh release upload "$GITHUB_REF_NAME" release/Schematic-macOS-universal.zip --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest --notes-file "$RUNNER_TEMP/release-notes.md"

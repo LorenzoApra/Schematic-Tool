@@ -5,6 +5,7 @@ import {
 } from '../data/connectors'
 import { deviceCategories, devices } from '../data/deviceLibrary'
 import { validateConnection } from './validation'
+import { readStoredProject } from './storage'
 import type {
   Connection,
   DeviceCategory,
@@ -14,7 +15,7 @@ import type {
   PortRef,
 } from '../types/schematic'
 
-export const STORAGE_KEY = 'live-show-schematic-state-v1'
+export { STORAGE_KEY } from './storage'
 const CONSTELLATION_DEVICE_ID = 'tebe-constellation-2me'
 export interface ProjectState {
   projectTitle: string
@@ -398,7 +399,7 @@ export function createDefaultProject(): ProjectState {
 }
 export function loadProject(): ProjectState {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = readStoredProject()
     return raw
       ? (parseProject(JSON.parse(raw)) ?? createDefaultProject())
       : createDefaultProject()

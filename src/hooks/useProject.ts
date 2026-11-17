@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useState } from 'react'
-import { loadProject, STORAGE_KEY, type ProjectState } from '../lib/project'
+import { loadProject, type ProjectState } from '../lib/project'
+import { saveStoredProject } from '../lib/storage'
 
 interface History {
   past: ProjectState[]
@@ -60,9 +61,9 @@ export function useProject() {
   })
 
   useEffect(() => {
-    const save = () => {
+    const save = async () => {
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+        await saveStoredProject(JSON.stringify(state))
         setSaved({ state, error: false })
       } catch {
         setSaved({ state, error: true })
@@ -71,10 +72,12 @@ export function useProject() {
     const timeout = window.setTimeout(save, 450)
     window.addEventListener('pagehide', save)
     window.addEventListener('beforeunload', save)
+    window.addEventListener('schematic:save', save)
     return () => {
       window.clearTimeout(timeout)
       window.removeEventListener('pagehide', save)
       window.removeEventListener('beforeunload', save)
+      window.removeEventListener('schematic:save', save)
     }
   }, [state])
 
